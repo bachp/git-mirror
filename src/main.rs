@@ -286,6 +286,7 @@ fn main() {
         .arg(Arg::with_name("mirror-dir")
                  .short("m")
                  .long("mirror-dir")
+                 .help("Directory where the local clones are stored")
                  .default_value("./mirror-dir"))
         .arg(Arg::with_name("v")
                  .short("v")
@@ -297,6 +298,7 @@ fn main() {
         .arg(Arg::with_name("worker-count")
                  .short("c")
                  .long("worker-count")
+                 .help("Number of concurrent mirror jobs")
                  .default_value("1"))
         .after_help("ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
                      Private token or Personal access token to access the GitLab API")
