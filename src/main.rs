@@ -23,11 +23,11 @@ use self::slug::slugify;
 #[macro_use]
 extern crate hyper;
 extern crate hyper_native_tls;
+extern crate hyper_rustls;
 use hyper::client::Client;
 use hyper::header::Headers;
 use hyper::status::StatusCode;
 use hyper::net::HttpsConnector;
-use hyper_native_tls::NativeTlsClient;
 
 // Custom header used to access the gitlab API
 // See: https://docs.gitlab.com/ce/api/#authentication
@@ -80,8 +80,13 @@ fn get_mirror_repos(gitlab_url: &str,
                     headers: Headers,
                     use_http: bool)
                     -> Result<Vec<Mirror>, String> {
-    let ssl = NativeTlsClient::new().expect("Unable to initialize TLS system");
-    let connector = HttpsConnector::new(ssl);
+
+    #[cfg(feature = "native-tls")]
+    let tls = hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
+    #[cfg(not(feature = "native-tls"))]
+    let tls = hyper_rustls::TlsClient::new();
+
+    let connector = HttpsConnector::new(tls);
     let client = Client::with_connector(connector);
 
     let url = format!("{}/api/v4/groups/{}/projects", gitlab_url, group);
