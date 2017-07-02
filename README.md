@@ -7,33 +7,33 @@ Gitlab Mirror will watch a GitLab group and keep it in sync with external git re
 1. Create group on your gitlab instance or gitlab.com. e.g. `mirror-test`
 2. Add a repository you like to sync to. e.g `my-project`
 3. Add a description to the project in YAML format containing an `origin` field. e.g. `origin: https://git.example.org/my-project.git`
-4. Execute  set the `GITLAB_PRIVATE_TOKEN` environment variable a personal access token or your private token and execute `gitlab-mirror`
+4. Execute  set the `GITLAB_PRIVATE_TOKEN` environment variable a personal access token or your private token and execute `git-mirror`
 
 ``` sh
 export GITLAB_PRIVATE_TOKEN="<personal-access-token>"
-gitlab-mirror -g mirror-test
+git-mirror -g mirror-test
 ```
 
 This will sync the group `mirror-test` on gitlab.com. If you want to sync a group on a diffetenr GitLab instance, use the `-u` flag.
 
 ``` sh
-gitlab-mirror -g mirror-test -u http://gitlab.example.org
+git-mirror -g mirror-test -u http://gitlab.example.org
 ```
 
 ### Multiple concurrent jobs
 
-`gitlab-mirror` allows to execute multiple mirror jobs in parallel using the `-c <n>` flag.
+`git-mirror` allows to execute multiple mirror jobs in parallel using the `-c <n>` flag.
 
 ``` sh
-gitlab-mirror -g mirror-test -c 8
+git-mirror -g mirror-test -c 8
 ```
 
 This will execute at most 8 sync jobs in parallel
 
 ### Description format
 
-For `gitlab-mirror` to mirror a repository it needs to know where to sync from.
-In order to achive this `gitlab-mirror` expects the description field of a mirrored project to
+For `git-mirror` to mirror a repository it needs to know where to sync from.
+In order to achive this `git-mirror` expects the description field of a mirrored project to
 be valid [YAML](http://yaml.org/) with at least an `origin` field.
 
 ``` yaml

@@ -1,6 +1,6 @@
 [package]
-name = "gitlab-mirror"
-version = "0.1.0"
+name = "git-mirror"
+version = "0.2.0"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 
 [features]
