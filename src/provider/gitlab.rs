@@ -8,7 +8,9 @@
 extern crate log;
 
 // Used for gitlab API access via HTTPS
+#[cfg(feature = "native-tls")]
 extern crate hyper_native_tls;
+#[cfg(not(feature = "native-tls"))]
 extern crate hyper_rustls;
 use hyper::client::Client;
 use hyper::header::Headers;
