@@ -46,7 +46,6 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
         }
         debug!("Level {:?}", log_enabled!(Info));
         git.current_dir(&origin_dir)
-            .env_clear()
             .env("GIT_TERMINAL_PROMPT", "0");
         return git;
     };
