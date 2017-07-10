@@ -40,7 +40,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
 
     // Group common setting for al git commands in this closure
     let git_base_cmd = || {
-        let mut git = Command::new("/usr/bin/git");
+        let mut git = Command::new("git");
         if !log_enabled!(Info) {
             git.stdout(Stdio::null());
         }
