@@ -40,13 +40,12 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
 
     // Group common setting for al git commands in this closure
     let git_base_cmd = || {
-        let mut git = Command::new("git");
+        let mut git = Command::new("/usr/bin/git");
         if !log_enabled!(Info) {
             git.stdout(Stdio::null());
         }
         debug!("Level {:?}", log_enabled!(Info));
-        git.current_dir(&origin_dir)
-            .env("GIT_TERMINAL_PROMPT", "0");
+        git.env("GIT_TERMINAL_PROMPT", "0");
         return git;
     };
 
@@ -68,6 +67,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
 
         let mut set_url_cmd = git_base_cmd();
         set_url_cmd
+            .current_dir(&origin_dir)
             .args(&["remote", "set-url", "origin"])
             .arg(origin);
 
@@ -88,7 +88,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
         }
 
         let mut remote_update_cmd = git_base_cmd();
-        remote_update_cmd.args(&["remote", "update"]);
+        remote_update_cmd.current_dir(&origin_dir).args(&["remote", "update"]);
 
         trace!("Remote update command started: {:?}", remote_update_cmd);
 
@@ -139,7 +139,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
     info!("Push to destination {}", destination);
 
     let mut push_cmd = git_base_cmd();
-    push_cmd.args(&["push", "--mirror"]).arg(destination);
+    push_cmd.current_dir(&origin_dir).args(&["push", "--mirror"]).arg(destination);
 
     trace!("Push  started: {:?}", push_cmd);
 
