@@ -111,7 +111,7 @@ impl Provider for GitLab {
                         warn!("Skipping {}, Skip flag set", p.web_url);
                         continue;
                     }
-                    println!("{0} -> {1}", desc.origin, p.ssh_url_to_repo);
+                    trace!("{0} -> {1}", desc.origin, p.ssh_url_to_repo);
                     let destination = if use_http {
                         p.http_url_to_repo
                     } else {

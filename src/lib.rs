@@ -33,7 +33,15 @@ use std::sync::mpsc::channel;
 use provider::{Mirror, Provider};
 
 
-pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Result<u8, String> {
+pub fn mirror_repo(mirror_dir: String,
+                   origin: &str,
+                   destination: &str,
+                   dry_run: bool)
+                   -> Result<u8, String> {
+
+    if dry_run {
+        return Ok(1);
+    }
 
     let origin_dir = Path::new(&mirror_dir).join(slugify(origin));
     debug!("Using origin dir: {0:?}", origin_dir);
@@ -43,6 +51,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
         let mut git = Command::new("git");
         if !log_enabled!(Info) {
             git.stdout(Stdio::null());
+            git.stderr(Stdio::null());
         }
         debug!("Level {:?}", log_enabled!(Info));
         git.env("GIT_TERMINAL_PROMPT", "0");
@@ -157,7 +166,7 @@ pub fn mirror_repo(mirror_dir: String, origin: &str, destination: &str) -> Resul
     return Ok(1);
 }
 
-fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str) {
+fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run: bool) {
     // Give the work to the worker pool
     let pool = ThreadPool::new(worker_count);
     let mut n = 0;
@@ -167,10 +176,14 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str) {
         let tx = tx.clone();
         let mirror_dir = mirror_dir.to_owned().clone();
         pool.execute(move || {
-
-            let c = match mirror_repo(mirror_dir, &x.origin, &x.destination) {
-                Ok(c) => c,
+            print!("{} -> {} : ", x.origin, x.destination);
+            let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
+                Ok(c) => {
+                    println!("OK");
+                    c
+                }
                 Err(e) => {
+                    println!("ERROR");
                     error!("Unable to sync repo {} -> {} ({})",
                            x.origin,
                            x.destination,
@@ -188,7 +201,7 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str) {
 }
 
 
-pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str) {
+pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str, dry_run: bool) {
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().unwrap_or_else(|e| {
@@ -197,7 +210,7 @@ pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str) {
                                                            exit(1);
                                                        });
 
-    run_sync_task(v, worker_count, mirror_dir);
+    run_sync_task(v, worker_count, mirror_dir, dry_run);
 }
 
 

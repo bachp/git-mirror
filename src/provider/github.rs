@@ -106,7 +106,7 @@ impl Provider for GitHub {
                         warn!("Skipping {}, Skip flag set", p.url);
                         continue;
                     }
-                    println!("{0} -> {1}", desc.origin, p.ssh_url);
+                    trace!("{0} -> {1}", desc.origin, p.ssh_url);
                     let destination = if use_http { p.clone_url } else { p.ssh_url };
                     let m = Mirror {
                         origin: desc.origin,

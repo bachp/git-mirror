@@ -59,6 +59,9 @@ fn main() {
         .arg(Arg::with_name("http")
                  .long("https")
                  .help("Use http(s) instead of SSH to sync the GitLab repository"))
+        .arg(Arg::with_name("dry-run")
+                 .long("dry-run")
+                 .help("Only print what to do without actually running any git commands."))
         .arg(Arg::with_name("worker-count")
                  .short("c")
                  .long("worker-count")
@@ -92,6 +95,8 @@ fn main() {
     debug!("Using group: {}", mirror_group);
     let use_http = m.is_present("http");
     debug!("Using http enabled: {}", use_http);
+    let dry_run = m.is_present("dry-run");
+    debug!("Dry run: {}", dry_run);
     let worker_count = value_t_or_exit!(m.value_of("worker-count"), usize);
     debug!("Worker count: {}", worker_count);
 
@@ -105,7 +110,7 @@ fn main() {
                 use_http: use_http,
                 private_token: gitlab_private_token,
             };
-            do_mirror(&p, worker_count, &mirror_dir);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run);
         }
         Providers::GitHub => {
             let p = GitHub {
@@ -115,7 +120,7 @@ fn main() {
                 private_token: gitlab_private_token,
                 useragent: format!("{}/{}", crate_name!(), crate_version!()),
             };
-            do_mirror(&p, worker_count, &mirror_dir);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run);
         }
     };
 }
