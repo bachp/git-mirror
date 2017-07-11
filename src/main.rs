@@ -35,47 +35,58 @@ fn main() {
     let m = App::new(crate_name!())
         .author(crate_authors!())
         .version(crate_version!())
-        .arg(Arg::with_name("url")
-                 .short("u")
-                 .long("url")
-                 .help("URL of the instance to get repositires from")
-                 .default_value_if("provider", Some("GitLab"), "https://gitlab.com")
-                 .default_value_if("provider", Some("GitHub"), "https://api.github.com"))
-        .arg(Arg::with_name("group")
-                 .short("g")
-                 .long("group")
-                 .help("Name of the group to check for repositires to sync")
-                 .takes_value(true)
-                 .required(true))
-        .arg(Arg::with_name("mirror-dir")
-                 .short("m")
-                 .long("mirror-dir")
-                 .help("Directory where the local clones are stored")
-                 .default_value("./mirror-dir"))
-        .arg(Arg::with_name("v")
-                 .short("v")
-                 .multiple(true)
-                 .help("Verbosity level"))
-        .arg(Arg::with_name("http")
-                 .long("https")
-                 .help("Use http(s) instead of SSH to sync the GitLab repository"))
-        .arg(Arg::with_name("dry-run")
-                 .long("dry-run")
-                 .help("Only print what to do without actually running any git commands."))
-        .arg(Arg::with_name("worker-count")
-                 .short("c")
-                 .long("worker-count")
-                 .help("Number of concurrent mirror jobs")
-                 .default_value("1"))
-        .arg(Arg::with_name("provider")
-                 .short("p")
-                 .long("provider")
-                 .help("Provider to use for fetching repositories")
-                 .takes_value(true)
-                 .possible_values(&Providers::variants())
-                 .default_value("GitLab"))
-        .after_help("ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
-                     Private token or Personal access token to access the GitLab API")
+        .arg(
+            Arg::with_name("url")
+                .short("u")
+                .long("url")
+                .help("URL of the instance to get repositires from")
+                .default_value_if("provider", Some("GitLab"), "https://gitlab.com")
+                .default_value_if("provider", Some("GitHub"), "https://api.github.com"),
+        )
+        .arg(
+            Arg::with_name("group")
+                .short("g")
+                .long("group")
+                .help("Name of the group to check for repositires to sync")
+                .takes_value(true)
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("mirror-dir")
+                .short("m")
+                .long("mirror-dir")
+                .help("Directory where the local clones are stored")
+                .default_value("./mirror-dir"),
+        )
+        .arg(Arg::with_name("v").short("v").multiple(true).help(
+            "Verbosity level",
+        ))
+        .arg(Arg::with_name("http").long("https").help(
+            "Use http(s) instead of SSH to sync the GitLab repository",
+        ))
+        .arg(Arg::with_name("dry-run").long("dry-run").help(
+            "Only print what to do without actually running any git commands.",
+        ))
+        .arg(
+            Arg::with_name("worker-count")
+                .short("c")
+                .long("worker-count")
+                .help("Number of concurrent mirror jobs")
+                .default_value("1"),
+        )
+        .arg(
+            Arg::with_name("provider")
+                .short("p")
+                .long("provider")
+                .help("Provider to use for fetching repositories")
+                .takes_value(true)
+                .possible_values(&Providers::variants())
+                .default_value("GitLab"),
+        )
+        .after_help(
+            "ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
+                     Private token or Personal access token to access the GitLab API",
+        )
         .get_matches();
 
     stderrlog::new()

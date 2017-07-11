@@ -66,8 +66,8 @@ impl Provider for GitLab {
     fn get_mirror_repos(&self) -> Result<Vec<Mirror>, String> {
 
         #[cfg(feature = "native-tls")]
-        let tls = hyper_native_tls::NativeTlsClient::new()
-            .expect("Unable to initialize TLS system");
+        let tls =
+            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
         #[cfg(not(feature = "native-tls"))]
         let tls = hyper_rustls::TlsClient::new();
 
@@ -88,18 +88,20 @@ impl Provider for GitLab {
 
         for page in 1..u32::MAX {
 
-            let url = format!("{}/api/v4/groups/{}/projects?per_page={}&page={}",
-                              self.url,
-                              self.group,
-                              PER_PAGE,
-                              page);
+            let url = format!(
+                "{}/api/v4/groups/{}/projects?per_page={}&page={}",
+                self.url,
+                self.group,
+                PER_PAGE,
+                page
+            );
             trace!("URL: {}", url);
 
-            let res = client
-                .get(&url)
-                .headers(headers.clone())
-                .send()
-                .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
+            let res = client.get(&url).headers(headers.clone()).send().or_else(
+                |e| {
+                    Err(format!("Unable to connect to: {} ({})", url, e))
+                },
+            )?;
 
             if res.status != StatusCode::Ok {
                 if res.status == StatusCode::Unauthorized {
@@ -111,9 +113,11 @@ impl Provider for GitLab {
                         url
                     ));
                 } else {
-                    return Err(format!("API call received invalid status ({}) for : {}",
-                                       res.status,
-                                       url));
+                    return Err(format!(
+                        "API call received invalid status ({}) for : {}",
+                        res.status,
+                        url
+                    ));
                 }
             }
 
@@ -129,9 +133,9 @@ impl Provider for GitLab {
                 }
             };
 
-            let projects_page: Vec<Project> =
-                serde_json::from_reader(res)
-                    .or_else(|e| Err(format!("Unable to parse response as JSON ({})", e)))?;
+            let projects_page: Vec<Project> = serde_json::from_reader(res).or_else(|e| {
+                Err(format!("Unable to parse response as JSON ({})", e))
+            })?;
 
             projects.extend(projects_page);
 

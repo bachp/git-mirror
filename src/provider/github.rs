@@ -54,8 +54,8 @@ impl Provider for GitHub {
     fn get_mirror_repos(&self) -> Result<Vec<Mirror>, String> {
 
         #[cfg(feature = "native-tls")]
-        let tls = hyper_native_tls::NativeTlsClient::new()
-            .expect("Unable to initialize TLS system");
+        let tls =
+            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
         #[cfg(not(feature = "native-tls"))]
         let tls = hyper_rustls::TlsClient::new();
 
@@ -68,34 +68,38 @@ impl Provider for GitHub {
         // Github rejects requests without user agent
         headers.set(UserAgent(self.useragent.to_owned()));
         // Set the accept header to make sure the v3 api is used
-        headers.set(Accept(vec![qitem("application/vnd.github.v3+json".parse().unwrap())]));
+        headers.set(Accept(vec![
+            qitem("application/vnd.github.v3+json".parse().unwrap()),
+        ]));
 
         let url = format!("{}/orgs/{}/repos", self.url, self.org);
         trace!("URL: {}", url);
 
-        let res = client
-            .get(&url)
-            .headers(headers)
-            .send()
-            .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
+        let res = client.get(&url).headers(headers).send().or_else(|e| {
+            Err(format!("Unable to connect to: {} ({})", url, e))
+        })?;
 
         if res.status != StatusCode::Ok {
             if res.status == StatusCode::Unauthorized {
-                return Err(format!("API call received unautorized ({}) for: {}. \
+                return Err(format!(
+                    "API call received unautorized ({}) for: {}. \
                                    Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
                                    variable is set.",
-                                   res.status,
-                                   url));
+                    res.status,
+                    url
+                ));
             } else {
-                return Err(format!("API call received invalid status ({}) for : {}",
-                                   res.status,
-                                   url));
+                return Err(format!(
+                    "API call received invalid status ({}) for : {}",
+                    res.status,
+                    url
+                ));
             }
         }
 
-        let projects: Vec<Project> =
-            serde_json::from_reader(res)
-                .or_else(|e| Err(format!("Unable to parse response as JSON ({:?})", e)))?;
+        let projects: Vec<Project> = serde_json::from_reader(res).or_else(|e| {
+            Err(format!("Unable to parse response as JSON ({:?})", e))
+        })?;
 
         let mut mirrors: Vec<Mirror> = Vec::new();
 
