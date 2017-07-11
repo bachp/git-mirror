@@ -8,6 +8,7 @@ native-tls = [ "hyper-native-tls" ]
 
 [dependencies]
 clap = "2.24.2"
+chrono = "0.4.0"
 log = "0.3.8"
 stderrlog = "0.2.2"
 slug = "0.1.2"

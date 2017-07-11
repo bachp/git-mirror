@@ -30,6 +30,10 @@ extern crate threadpool;
 use threadpool::ThreadPool;
 use std::sync::mpsc::channel;
 
+// Time handling
+extern crate chrono;
+use chrono::Local;
+
 use provider::{Mirror, Provider};
 
 
@@ -199,14 +203,14 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
         let tx = tx.clone();
         let mirror_dir = mirror_dir.to_owned().clone();
         pool.execute(move || {
-            print!("{} -> {} : ", x.origin, x.destination);
+            println!("START [{}]: {} -> {}", Local::now(), x.origin, x.destination);
             let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
                 Ok(c) => {
-                    println!("OK");
+                    println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
                     c
                 }
                 Err(e) => {
-                    println!("ERROR");
+                    println!("FAIL [{}]: {} -> {} ({})", Local::now(), x.origin, x.destination, e);
                     error!(
                         "Unable to sync repo {} -> {} ({})",
                         x.origin,
@@ -221,7 +225,7 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
         n += 1;
     }
 
-    println!("Done {0}/{1}", rx.iter().take(n).fold(0, |a, b| a + b), n);
+    println!("DONE [{2}]: {0}/{1}", rx.iter().take(n).fold(0, |a, b| a + b), n, Local::now());
 
 }
 

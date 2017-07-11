@@ -91,6 +91,7 @@ fn main() {
 
     stderrlog::new()
         .module(module_path!())
+        .timestamp(stderrlog::Timestamp::Second)
         .verbosity(cmp::min(m.occurrences_of("v") as usize, 4))
         .init()
         .unwrap();
