@@ -4,6 +4,9 @@
  * SPDX-License-Identifier:     MIT
  */
 
+// Get Max of u32
+use std::u32;
+
 // Used for error and debug logging
 extern crate log;
 
@@ -21,6 +24,9 @@ use hyper::net::HttpsConnector;
 // See: https://docs.gitlab.com/ce/api/#authentication
 header! { (PrivateToken, "PRIVATE-TOKEN") => [String] }
 
+// Custom header to check for pagination
+header! { (XNextPage, "X-Next-Page") => [u32] }
+
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;
 extern crate serde_json;
@@ -28,6 +34,7 @@ extern crate serde_yaml;
 
 use provider::{Mirror, Provider};
 
+#[derive(Debug)]
 pub struct GitLab {
     pub url: String,
     pub group: String,
@@ -44,7 +51,7 @@ struct Desc {
 }
 
 /// A project from the GitLab API
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct Project {
     description: String,
     web_url: String,
@@ -52,6 +59,8 @@ struct Project {
     http_url_to_repo: String,
 }
 
+// Number of items per page to request
+const PER_PAGE: u8 = 100;
 
 impl Provider for GitLab {
     fn get_mirror_repos(&self) -> Result<Vec<Mirror>, String> {
@@ -75,32 +84,61 @@ impl Provider for GitLab {
             None => trace!("GITLAB_PRIVATE_TOKEN not set"),
         }
 
-        let url = format!("{}/api/v4/groups/{}/projects", self.url, self.group);
-        trace!("URL: {}", url);
+        let mut projects: Vec<Project> = Vec::new();
 
-        let res = client
-            .get(&url)
-            .headers(headers)
-            .send()
-            .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
+        for page in 1..u32::MAX {
 
-        if res.status != StatusCode::Ok {
-            if res.status == StatusCode::Unauthorized {
-                return Err(format!("API call received unautorized ({}) for: {}. \
+            let url = format!("{}/api/v4/groups/{}/projects?per_page={}&page={}",
+                              self.url,
+                              self.group,
+                              PER_PAGE,
+                              page);
+            trace!("URL: {}", url);
+
+            let res = client
+                .get(&url)
+                .headers(headers.clone())
+                .send()
+                .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
+
+            if res.status != StatusCode::Ok {
+                if res.status == StatusCode::Unauthorized {
+                    return Err(format!(
+                        "API call received unautorized ({}) for: {}. \
                                    Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
                                    variable is set.",
-                                   res.status,
-                                   url));
-            } else {
-                return Err(format!("API call received invalid status ({}) for : {}",
-                                   res.status,
-                                   url));
+                        res.status,
+                        url
+                    ));
+                } else {
+                    return Err(format!("API call received invalid status ({}) for : {}",
+                                       res.status,
+                                       url));
+                }
+            }
+
+
+            let has_next = match res.headers.get::<XNextPage>() {
+                None => {
+                    trace!("No more pages");
+                    false
+                }
+                Some(n) => {
+                    trace!("Next page: {}", n);
+                    true
+                }
+            };
+
+            let projects_page: Vec<Project> =
+                serde_json::from_reader(res)
+                    .or_else(|e| Err(format!("Unable to parse response as JSON ({})", e)))?;
+
+            projects.extend(projects_page);
+
+            if !has_next {
+                break;
             }
         }
-
-        let projects: Vec<Project> =
-            serde_json::from_reader(res)
-                .or_else(|e| Err(format!("Unable to parse response as JSON ({})", e)))?;
 
         let mut mirrors: Vec<Mirror> = Vec::new();
 
