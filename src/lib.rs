@@ -8,6 +8,10 @@ use std::process::{Command, Stdio, exit};
 use std::fs;
 use std::path::Path;
 
+// File locking
+extern crate fs2;
+use fs2::FileExt;
+
 // Used for error and debug logging
 #[macro_use]
 extern crate log;
@@ -69,17 +73,6 @@ pub fn mirror_repo(
             e
         ))
     })?;
-
-    fs::DirBuilder::new()
-        .recursive(true)
-        .create(&mirror_dir)
-        .or_else(|e| {
-            Err(format!(
-                "Unable to create mirror dir: {:?} ({})",
-                mirror_dir,
-                e
-            ))
-        })?;
 
     if origin_dir.is_dir() {
         info!("Local Update for {}", origin);
@@ -203,14 +196,25 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
         let tx = tx.clone();
         let mirror_dir = mirror_dir.to_owned().clone();
         pool.execute(move || {
-            println!("START [{}]: {} -> {}", Local::now(), x.origin, x.destination);
+            println!(
+                "START [{}]: {} -> {}",
+                Local::now(),
+                x.origin,
+                x.destination
+            );
             let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
                 Ok(c) => {
                     println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
                     c
                 }
                 Err(e) => {
-                    println!("FAIL [{}]: {} -> {} ({})", Local::now(), x.origin, x.destination, e);
+                    println!(
+                        "FAIL [{}]: {} -> {} ({})",
+                        Local::now(),
+                        x.origin,
+                        x.destination,
+                        e
+                    );
                     error!(
                         "Unable to sync repo {} -> {} ({})",
                         x.origin,
@@ -225,12 +229,42 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
         n += 1;
     }
 
-    println!("DONE [{2}]: {0}/{1}", rx.iter().take(n).fold(0, |a, b| a + b), n, Local::now());
+    println!(
+        "DONE [{2}]: {0}/{1}",
+        rx.iter().take(n).fold(0, |a, b| a + b),
+        n,
+        Local::now()
+    );
 
 }
 
 
 pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str, dry_run: bool) {
+
+    // Make sure the mirror directory exists
+    trace!("Create mirror directory at {:?}", mirror_dir);
+    fs::create_dir_all(&mirror_dir).unwrap_or_else(|e| {
+        error!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e);
+        exit(2);
+    });
+
+    // Check that only one instance is running against a mirror directory
+    let lockfile_path = Path::new(mirror_dir).join("git-mirror.lock");
+    let lockfile = fs::File::create(&lockfile_path).unwrap_or_else(|e| {
+        error!("Unable to open lockfile: {:?} ({})", &lockfile_path, e);
+        exit(3);
+    });
+
+    lockfile.try_lock_exclusive().unwrap_or_else(|e| {
+        error!(
+            "Another instance is already running aginst the same mirror directory: {:?} ({})",
+            &mirror_dir,
+            e
+        );
+        exit(4);
+    });
+
+    trace!("Aquired lockfile: {:?}", &lockfile);
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().unwrap_or_else(|e| {
@@ -239,6 +273,7 @@ pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str, dry
     });
 
     run_sync_task(v, worker_count, mirror_dir, dry_run);
+
 }
 
 
