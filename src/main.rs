@@ -39,7 +39,7 @@ fn main() {
             Arg::with_name("url")
                 .short("u")
                 .long("url")
-                .help("URL of the instance to get repositires from")
+                .help("URL of the instance to get repositories from")
                 .default_value_if("provider", Some("GitLab"), "https://gitlab.com")
                 .default_value_if("provider", Some("GitHub"), "https://api.github.com"),
         )
@@ -47,7 +47,7 @@ fn main() {
             Arg::with_name("group")
                 .short("g")
                 .long("group")
-                .help("Name of the group to check for repositires to sync")
+                .help("Name of the group to check for repositories to sync")
                 .takes_value(true)
                 .required(true),
         )
