@@ -7,6 +7,7 @@
 use std::process::{Command, Stdio, exit};
 use std::fs;
 use std::path::Path;
+use std::fs::File;
 
 // File locking
 extern crate fs2;
@@ -15,7 +16,7 @@ use fs2::FileExt;
 // Used for error and debug logging
 #[macro_use]
 extern crate log;
-use log::LogLevel::Info;
+use log::LogLevel::{Debug, Info};
 
 // Used to create sane local directory names
 extern crate slug;
@@ -36,7 +37,12 @@ use std::sync::mpsc::channel;
 
 // Time handling
 extern crate chrono;
-use chrono::Local;
+use chrono::{Local, Utc};
+
+// Monitoring
+#[macro_use]
+extern crate prometheus;
+use prometheus::{TextEncoder, Encoder};
 
 use provider::{Mirror, Provider};
 
@@ -58,9 +64,8 @@ pub fn mirror_repo(
     // Group common setting for al git commands in this closure
     let git_base_cmd = || {
         let mut git = Command::new("git");
-        if !log_enabled!(Info) {
+        if !log_enabled!(Debug) {
             git.stdout(Stdio::null());
-            git.stderr(Stdio::null());
         }
         debug!("Level {:?}", log_enabled!(Info));
         git.env("GIT_TERMINAL_PROMPT", "0");
@@ -191,10 +196,27 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
     let pool = ThreadPool::new(worker_count);
     let mut n = 0;
 
+    let proj_fail = register_counter!("git_mirror_fail", "Failed projects").unwrap();
+    let proj_ok = register_counter!("git_mirror_ok", "OK projects").unwrap();
+    let proj_start = register_gauge_vec!(
+        "git_mirror_project_start",
+        "Start of project mirror as unix timestamp",
+        &["origin", "destination"]
+    ).unwrap();
+    let proj_end = register_gauge_vec!(
+        "git_mirror_project_end",
+        "End of projeect mirror as unix timestamp",
+        &["origin", "destination"]
+    ).unwrap();
+
     let (tx, rx) = channel();
     for x in v {
         let tx = tx.clone();
         let mirror_dir = mirror_dir.to_owned().clone();
+        let proj_fail = proj_fail.clone();
+        let proj_ok = proj_ok.clone();
+        let proj_start = proj_start.clone();
+        let proj_end = proj_end.clone();
         pool.execute(move || {
             println!(
                 "START [{}]: {} -> {}",
@@ -202,9 +224,16 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
                 x.origin,
                 x.destination
             );
+            proj_start
+                .with_label_values(&[&x.origin, &x.destination])
+                .set(Utc::now().timestamp() as f64);
             let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
                 Ok(c) => {
                     println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
+                    proj_end
+                        .with_label_values(&[&x.origin, &x.destination])
+                        .set(Utc::now().timestamp() as f64);
+                    proj_ok.inc();
                     c
                 }
                 Err(e) => {
@@ -215,6 +244,10 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
                         x.destination,
                         e
                     );
+                    proj_end
+                        .with_label_values(&[&x.origin, &x.destination])
+                        .set(Utc::now().timestamp() as f64);
+                    proj_fail.inc();
                     error!(
                         "Unable to sync repo {} -> {} ({})",
                         x.origin,
@@ -239,7 +272,21 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
 }
 
 
-pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str, dry_run: bool) {
+pub fn do_mirror(
+    provider: &Provider,
+    worker_count: usize,
+    mirror_dir: &str,
+    dry_run: bool,
+    metrics_file: Option<String>,
+) {
+    let start_time = register_gauge!(
+        "git_mirror_start_time",
+        "Start time of the sync as unix timestamp"
+    ).unwrap();
+    let end_time = register_gauge!(
+        "git_mirror_end_time",
+        "End time of the sync as unix timestamp"
+    ).unwrap();
 
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", mirror_dir);
@@ -272,9 +319,24 @@ pub fn do_mirror(provider: &Provider, worker_count: usize, mirror_dir: &str, dry
         exit(1);
     });
 
+    start_time.set(Utc::now().timestamp() as f64);
+
     run_sync_task(v, worker_count, mirror_dir, dry_run);
 
+    end_time.set(Utc::now().timestamp() as f64);
+
+    match metrics_file {
+        Some(f) => write_metrics(&f),
+        None => trace!("Skipping merics file creation"),
+
+    };
 }
 
+fn write_metrics(f: &str) {
+    let mut file = File::create(f).unwrap();
+    let encoder = TextEncoder::new();
+    let metric_familys = prometheus::gather();
+    encoder.encode(&metric_familys, &mut file).unwrap();
+}
 
 pub mod provider;

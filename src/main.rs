@@ -83,6 +83,15 @@ fn main() {
                 .possible_values(&Providers::variants())
                 .default_value("GitLab"),
         )
+        .arg(
+            Arg::with_name("metrics-file")
+                .long("metrics-file")
+                .help(
+                    "Location where to store metrics for consumption by \
+                       Prometheus nodeexporter's text file colloctor.",
+                )
+                .takes_value(true),
+        )
         .after_help(
             "ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
                      Private token or Personal access token to access the GitLab API",
@@ -111,6 +120,8 @@ fn main() {
     debug!("Dry run: {}", dry_run);
     let worker_count = value_t_or_exit!(m.value_of("worker-count"), usize);
     debug!("Worker count: {}", worker_count);
+    let metrics_file = value_t!(m.value_of("metrics-file"), String).ok();
+    debug!("Metrics file: {:?}", metrics_file);
 
     let provider = value_t_or_exit!(m.value_of("provider"), Providers);
 
@@ -122,7 +133,7 @@ fn main() {
                 use_http: use_http,
                 private_token: gitlab_private_token,
             };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file);
         }
         Providers::GitHub => {
             let p = GitHub {
@@ -132,7 +143,7 @@ fn main() {
                 private_token: gitlab_private_token,
                 useragent: format!("{}/{}", crate_name!(), crate_version!()),
             };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file);
         }
     };
 }

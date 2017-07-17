@@ -103,11 +103,16 @@ impl Provider for GitHub {
 
         let mut mirrors: Vec<Mirror> = Vec::new();
 
+        let proj_total = register_counter!("git_mirror_total", "Total projects").unwrap();
+        let proj_skip = register_counter!("git_mirror_skip", "Skipped projects").unwrap();
+
         for p in projects {
+            proj_total.inc();
             match serde_yaml::from_str::<Desc>(&p.description.unwrap_or_default()) {
                 Ok(desc) => {
                     if desc.skip {
                         warn!("Skipping {}, Skip flag set", p.url);
+                        proj_skip.inc();
                         continue;
                     }
                     trace!("{0} -> {1}", desc.origin, p.ssh_url);
@@ -118,7 +123,10 @@ impl Provider for GitHub {
                     };
                     mirrors.push(m);
                 }
-                Err(e) => warn!("Skipping {}, Description not valid YAML ({})", p.url, e),
+                Err(e) => {
+                    proj_skip.inc();
+                    warn!("Skipping {}, Description not valid YAML ({})", p.url, e);
+                }
             }
         }
         return Ok(mirrors);
