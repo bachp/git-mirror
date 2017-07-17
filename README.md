@@ -14,7 +14,7 @@ export GITLAB_PRIVATE_TOKEN="<personal-access-token>"
 git-mirror -g mirror-test
 ```
 
-This will sync the group `mirror-test` on gitlab.com. If you want to sync a group on a diffetenr GitLab instance, use the `-u` flag.
+This will sync the group `mirror-test` on gitlab.com. If you want to sync a group on a different GitLab instance, use the `-u` flag.
 
 ``` sh
 git-mirror -g mirror-test -u http://gitlab.example.org
