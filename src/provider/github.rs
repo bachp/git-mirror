@@ -22,7 +22,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
-use provider::{Mirror, Provider};
+use provider::{Mirror, MirrorResult, MirrorError, Provider};
 
 pub struct GitHub {
     pub url: String,
@@ -51,7 +51,7 @@ struct Project {
 
 
 impl Provider for GitHub {
-    fn get_mirror_repos(&self) -> Result<Vec<Mirror>, String> {
+    fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
 
         #[cfg(feature = "native-tls")]
         let tls =
@@ -101,18 +101,13 @@ impl Provider for GitHub {
             Err(format!("Unable to parse response as JSON ({:?})", e))
         })?;
 
-        let mut mirrors: Vec<Mirror> = Vec::new();
-
-        let proj_total = register_counter!("git_mirror_total", "Total projects").unwrap();
-        let proj_skip = register_counter!("git_mirror_skip", "Skipped projects").unwrap();
+        let mut mirrors: Vec<MirrorResult> = Vec::new();
 
         for p in projects {
-            proj_total.inc();
             match serde_yaml::from_str::<Desc>(&p.description.unwrap_or_default()) {
                 Ok(desc) => {
                     if desc.skip {
-                        warn!("Skipping {}, Skip flag set", p.url);
-                        proj_skip.inc();
+                        mirrors.push(Err(MirrorError::Skip(p.url)));
                         continue;
                     }
                     trace!("{0} -> {1}", desc.origin, p.ssh_url);
@@ -121,11 +116,10 @@ impl Provider for GitHub {
                         origin: desc.origin,
                         destination: destination,
                     };
-                    mirrors.push(m);
+                    mirrors.push(Ok(m));
                 }
                 Err(e) => {
-                    proj_skip.inc();
-                    warn!("Skipping {}, Description not valid YAML ({})", p.url, e);
+                    mirrors.push(Err(MirrorError::Description(p.url, e)));
                 }
             }
         }

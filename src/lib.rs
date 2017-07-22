@@ -44,7 +44,7 @@ use chrono::{Local, Utc};
 extern crate prometheus;
 use prometheus::{TextEncoder, Encoder};
 
-use provider::{Mirror, Provider};
+use provider::{MirrorResult, Provider};
 
 
 pub fn mirror_repo(
@@ -191,11 +191,14 @@ pub fn mirror_repo(
     return Ok(1);
 }
 
-fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run: bool) {
+fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dry_run: bool) {
     // Give the work to the worker pool
     let pool = ThreadPool::new(worker_count);
     let mut n = 0;
 
+    let proj_total = register_counter!("git_mirror_total", "Total projects").unwrap();
+
+    let proj_skip = register_counter!("git_mirror_skip", "Skipped projects").unwrap();
     let proj_fail = register_counter!("git_mirror_fail", "Failed projects").unwrap();
     let proj_ok = register_counter!("git_mirror_ok", "OK projects").unwrap();
     let proj_start = register_gauge_vec!(
@@ -211,55 +214,64 @@ fn run_sync_task(v: Vec<Mirror>, worker_count: usize, mirror_dir: &str, dry_run:
 
     let (tx, rx) = channel();
     for x in v {
-        let tx = tx.clone();
-        let mirror_dir = mirror_dir.to_owned().clone();
-        let proj_fail = proj_fail.clone();
-        let proj_ok = proj_ok.clone();
-        let proj_start = proj_start.clone();
-        let proj_end = proj_end.clone();
-        pool.execute(move || {
-            println!(
-                "START [{}]: {} -> {}",
-                Local::now(),
-                x.origin,
-                x.destination
-            );
-            proj_start
-                .with_label_values(&[&x.origin, &x.destination])
-                .set(Utc::now().timestamp() as f64);
-            let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
-                Ok(c) => {
-                    println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
-                    proj_end
-                        .with_label_values(&[&x.origin, &x.destination])
-                        .set(Utc::now().timestamp() as f64);
-                    proj_ok.inc();
-                    c
-                }
-                Err(e) => {
+        proj_total.inc();
+        match x {
+            Ok(x) => {
+                let tx = tx.clone();
+                let mirror_dir = mirror_dir.to_owned().clone();
+                let proj_fail = proj_fail.clone();
+                let proj_ok = proj_ok.clone();
+                let proj_start = proj_start.clone();
+                let proj_end = proj_end.clone();
+                pool.execute(move || {
                     println!(
-                        "FAIL [{}]: {} -> {} ({})",
+                        "START [{}]: {} -> {}",
                         Local::now(),
                         x.origin,
-                        x.destination,
-                        e
+                        x.destination
                     );
-                    proj_end
+                    proj_start
                         .with_label_values(&[&x.origin, &x.destination])
                         .set(Utc::now().timestamp() as f64);
-                    proj_fail.inc();
-                    error!(
-                        "Unable to sync repo {} -> {} ({})",
-                        x.origin,
-                        x.destination,
-                        e
-                    );
-                    0
-                }
-            };
-            tx.send(c).unwrap();
-        });
-        n += 1;
+                    let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
+                        Ok(c) => {
+                            println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
+                            proj_end
+                                .with_label_values(&[&x.origin, &x.destination])
+                                .set(Utc::now().timestamp() as f64);
+                            proj_ok.inc();
+                            c
+                        }
+                        Err(e) => {
+                            println!(
+                                "FAIL [{}]: {} -> {} ({})",
+                                Local::now(),
+                                x.origin,
+                                x.destination,
+                                e
+                            );
+                            proj_end
+                                .with_label_values(&[&x.origin, &x.destination])
+                                .set(Utc::now().timestamp() as f64);
+                            proj_fail.inc();
+                            error!(
+                                "Unable to sync repo {} -> {} ({})",
+                                x.origin,
+                                x.destination,
+                                e
+                            );
+                            0
+                        }
+                    };
+                    tx.send(c).unwrap();
+                });
+                n += 1;
+            }
+            Err(e) => {
+                proj_skip.inc();
+                warn!("Skipping: {:?}", e);
+            }
+        };
     }
 
     println!(

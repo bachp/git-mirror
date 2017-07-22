@@ -4,12 +4,24 @@
  * SPDX-License-Identifier:     MIT
  */
 
+
+extern crate serde_yaml;
+
 /// A representation of a mirror job from orgin to destination
 #[derive(Debug)]
 pub struct Mirror {
     pub origin: String,
     pub destination: String,
 }
+
+/// An error occuring during mirror creation
+#[derive(Debug)]
+pub enum MirrorError {
+    Description(String, serde_yaml::Error),
+    Skip(String),
+}
+
+pub type MirrorResult = Result<Mirror, MirrorError>;
 
 /// A structured description
 #[derive(Deserialize, Debug)]
@@ -20,7 +32,7 @@ struct Desc {
 }
 
 pub trait Provider {
-    fn get_mirror_repos(&self) -> Result<Vec<Mirror>, String>;
+    fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String>;
 }
 
 mod gitlab;
