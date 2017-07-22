@@ -33,6 +33,7 @@ struct Desc {
 
 pub trait Provider {
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String>;
+    fn get_label(&self) -> String;
 }
 
 mod gitlab;

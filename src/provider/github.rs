@@ -51,6 +51,10 @@ struct Project {
 
 
 impl Provider for GitHub {
+    fn get_label(&self) -> String {
+        format!("{}/orgs/{}", self.url, self.org)
+    }
+
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
 
         #[cfg(feature = "native-tls")]

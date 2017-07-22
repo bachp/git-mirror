@@ -63,6 +63,10 @@ struct Project {
 const PER_PAGE: u8 = 100;
 
 impl Provider for GitLab {
+    fn get_label(&self) -> String {
+        format!("{}/{}", self.url, self.group)
+    }
+
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
 
         #[cfg(feature = "native-tls")]

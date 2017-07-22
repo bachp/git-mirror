@@ -191,30 +191,38 @@ pub fn mirror_repo(
     return Ok(1);
 }
 
-fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dry_run: bool) {
+fn run_sync_task(
+    v: Vec<MirrorResult>,
+    worker_count: usize,
+    mirror_dir: &str,
+    dry_run: bool,
+    label: String,
+) {
     // Give the work to the worker pool
     let pool = ThreadPool::new(worker_count);
     let mut n = 0;
 
-    let proj_total = register_counter!("git_mirror_total", "Total projects").unwrap();
-
-    let proj_skip = register_counter!("git_mirror_skip", "Skipped projects").unwrap();
-    let proj_fail = register_counter!("git_mirror_fail", "Failed projects").unwrap();
-    let proj_ok = register_counter!("git_mirror_ok", "OK projects").unwrap();
+    let proj_total = register_counter_vec!("git_mirror_total", "Total projects", &["mirror"])
+        .unwrap();
+    let proj_skip = register_counter_vec!("git_mirror_skip", "Skipped projects", &["mirror"])
+        .unwrap();
+    let proj_fail = register_counter_vec!("git_mirror_fail", "Failed projects", &["mirror"])
+        .unwrap();
+    let proj_ok = register_counter_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
     let proj_start = register_gauge_vec!(
         "git_mirror_project_start",
         "Start of project mirror as unix timestamp",
-        &["origin", "destination"]
+        &["origin", "destination", "mirror"]
     ).unwrap();
     let proj_end = register_gauge_vec!(
         "git_mirror_project_end",
         "End of projeect mirror as unix timestamp",
-        &["origin", "destination"]
+        &["origin", "destination", "mirror"]
     ).unwrap();
 
     let (tx, rx) = channel();
     for x in v {
-        proj_total.inc();
+        proj_total.with_label_values(&[&label]).inc();
         match x {
             Ok(x) => {
                 let tx = tx.clone();
@@ -223,6 +231,7 @@ fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dr
                 let proj_ok = proj_ok.clone();
                 let proj_start = proj_start.clone();
                 let proj_end = proj_end.clone();
+                let label = label.clone();
                 pool.execute(move || {
                     println!(
                         "START [{}]: {} -> {}",
@@ -231,15 +240,15 @@ fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dr
                         x.destination
                     );
                     proj_start
-                        .with_label_values(&[&x.origin, &x.destination])
+                        .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
                     let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
                         Ok(c) => {
                             println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
                             proj_end
-                                .with_label_values(&[&x.origin, &x.destination])
+                                .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
-                            proj_ok.inc();
+                            proj_ok.with_label_values(&[&label]).inc();
                             c
                         }
                         Err(e) => {
@@ -251,9 +260,9 @@ fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dr
                                 e
                             );
                             proj_end
-                                .with_label_values(&[&x.origin, &x.destination])
+                                .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
-                            proj_fail.inc();
+                            proj_fail.with_label_values(&[&label]).inc();
                             error!(
                                 "Unable to sync repo {} -> {} ({})",
                                 x.origin,
@@ -268,7 +277,7 @@ fn run_sync_task(v: Vec<MirrorResult>, worker_count: usize, mirror_dir: &str, dr
                 n += 1;
             }
             Err(e) => {
-                proj_skip.inc();
+                proj_skip.with_label_values(&[&label]).inc();
                 warn!("Skipping: {:?}", e);
             }
         };
@@ -291,13 +300,15 @@ pub fn do_mirror(
     dry_run: bool,
     metrics_file: Option<String>,
 ) {
-    let start_time = register_gauge!(
+    let start_time = register_gauge_vec!(
         "git_mirror_start_time",
-        "Start time of the sync as unix timestamp"
+        "Start time of the sync as unix timestamp",
+        &["mirror"]
     ).unwrap();
-    let end_time = register_gauge!(
+    let end_time = register_gauge_vec!(
         "git_mirror_end_time",
-        "End time of the sync as unix timestamp"
+        "End time of the sync as unix timestamp",
+        &["mirror"]
     ).unwrap();
 
     // Make sure the mirror directory exists
@@ -331,11 +342,11 @@ pub fn do_mirror(
         exit(1);
     });
 
-    start_time.set(Utc::now().timestamp() as f64);
+    start_time.with_label_values(&[&provider.get_label()]).set(Utc::now().timestamp() as f64);
 
-    run_sync_task(v, worker_count, mirror_dir, dry_run);
+    run_sync_task(v, worker_count, mirror_dir, dry_run, provider.get_label());
 
-    end_time.set(Utc::now().timestamp() as f64);
+    end_time.with_label_values(&[&provider.get_label()]).set(Utc::now().timestamp() as f64);
 
     match metrics_file {
         Some(f) => write_metrics(&f),
