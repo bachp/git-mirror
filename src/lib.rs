@@ -16,7 +16,7 @@ use fs2::FileExt;
 // Used for error and debug logging
 #[macro_use]
 extern crate log;
-use log::LogLevel::{Debug, Info};
+use log::Level::{Debug, Info};
 
 // Used to create sane local directory names
 extern crate slug;

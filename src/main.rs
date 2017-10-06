@@ -23,6 +23,7 @@ extern crate git_mirror;
 use git_mirror::do_mirror;
 use git_mirror::provider::{GitLab, GitHub};
 
+use std::process::{exit};
 arg_enum!{
     #[derive(Debug)]
     enum Providers {
