@@ -24,6 +24,7 @@ use git_mirror::do_mirror;
 use git_mirror::provider::{GitLab, GitHub};
 
 use std::process::{exit};
+
 arg_enum!{
     #[derive(Debug)]
     enum Providers {
@@ -126,7 +127,7 @@ fn main() {
 
     let provider = value_t_or_exit!(m.value_of("provider"), Providers);
 
-    match provider {
+    let res = match provider {
         Providers::GitLab => {
             let p = GitLab {
                 url: gitlab_url.to_owned(),
@@ -134,7 +135,7 @@ fn main() {
                 use_http: use_http,
                 private_token: gitlab_private_token,
             };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file)
         }
         Providers::GitHub => {
             let p = GitHub {
@@ -144,7 +145,15 @@ fn main() {
                 private_token: gitlab_private_token,
                 useragent: format!("{}/{}", crate_name!(), crate_version!()),
             };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file);
+            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file)
+        }
+    };
+
+    match res {
+        Ok(_) => { info!("All done"); }
+        Err(e) => {
+            error!("Error occured: {}", e);
+            exit(2); // TODO: Return code in erro
         }
     };
 }

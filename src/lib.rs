@@ -4,7 +4,7 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::process::{Command, Stdio, exit};
+use std::process::{Command, Stdio};
 use std::fs;
 use std::path::Path;
 use std::fs::File;
@@ -299,7 +299,7 @@ pub fn do_mirror(
     mirror_dir: &str,
     dry_run: bool,
     metrics_file: Option<String>,
-) {
+) -> Result<(), String> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
         "Start time of the sync as unix timestamp",
@@ -313,46 +313,52 @@ pub fn do_mirror(
 
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", mirror_dir);
-    fs::create_dir_all(&mirror_dir).unwrap_or_else(|e| {
-        error!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e);
-        exit(2);
-    });
+    fs::create_dir_all(&mirror_dir).map_err(|e| {
+        format!(
+            "Unable to create mirror dir: {:?} ({})",
+            &mirror_dir,
+            e
+        )
+    })?;
 
     // Check that only one instance is running against a mirror directory
     let lockfile_path = Path::new(mirror_dir).join("git-mirror.lock");
-    let lockfile = fs::File::create(&lockfile_path).unwrap_or_else(|e| {
-        error!("Unable to open lockfile: {:?} ({})", &lockfile_path, e);
-        exit(3);
-    });
+    let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
+        format!("Unable to open lockfile: {:?} ({})", &lockfile_path, e)
+    })?;
 
-    lockfile.try_lock_exclusive().unwrap_or_else(|e| {
-        error!(
+    lockfile.try_lock_exclusive().map_err(|e| {
+        format!(
             "Another instance is already running aginst the same mirror directory: {:?} ({})",
             &mirror_dir,
             e
-        );
-        exit(4);
-    });
+        )
+    })?;
 
     trace!("Aquired lockfile: {:?}", &lockfile);
 
     // Get the list of repos to sync from gitlabsss
-    let v = provider.get_mirror_repos().unwrap_or_else(|e| {
-        error!("Unable to get mirror repos ({})", e);
-        exit(1);
-    });
+    let v = provider.get_mirror_repos().map_err(|e| -> String {
+        format!("Unable to get mirror repos ({})", e)
+    })?;
 
-    start_time.with_label_values(&[&provider.get_label()]).set(Utc::now().timestamp() as f64);
+    start_time.with_label_values(&[&provider.get_label()]).set(
+        Utc::now().timestamp() as f64,
+    );
 
     run_sync_task(v, worker_count, mirror_dir, dry_run, provider.get_label());
 
-    end_time.with_label_values(&[&provider.get_label()]).set(Utc::now().timestamp() as f64);
+    end_time.with_label_values(&[&provider.get_label()]).set(
+        Utc::now().timestamp() as
+            f64,
+    );
 
     match metrics_file {
         Some(f) => write_metrics(&f),
         None => trace!("Skipping merics file creation"),
-
     };
+
+    Ok(())
 }
 
 fn write_metrics(f: &str) {
