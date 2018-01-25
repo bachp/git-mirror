@@ -40,6 +40,7 @@ pub struct GitLab {
     pub group: String,
     pub use_http: bool,
     pub private_token: Option<String>,
+    pub recursive: bool,
 }
 
 /// A structured description
@@ -59,46 +60,26 @@ struct Project {
     http_url_to_repo: String,
 }
 
+/// A (sub)group from the GitLab API
+#[derive(Deserialize, Debug, Clone)]
+struct Group {
+    id: u64,
+}
+
 // Number of items per page to request
 const PER_PAGE: u8 = 100;
 
-impl Provider for GitLab {
-    fn get_label(&self) -> String {
-        format!("{}/{}", self.url, self.group)
-    }
-
-    fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
-
-        #[cfg(feature = "native-tls")]
-        let tls =
-            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
-        #[cfg(not(feature = "native-tls"))]
-        let tls = hyper_rustls::TlsClient::new();
-
-        let connector = HttpsConnector::new(tls);
-        let client = Client::with_connector(connector);
-
-        let use_http = self.use_http;
-
-        let mut headers = Headers::new();
-        match self.private_token.clone() {
-            Some(token) => {
-                headers.set(PrivateToken(token));
-            }
-            None => trace!("GITLAB_PRIVATE_TOKEN not set"),
-        }
-
-        let mut projects: Vec<Project> = Vec::new();
+impl GitLab {
+    fn get_paged<T: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        client: &Client,
+        headers: &Headers,
+    ) -> Result<Vec<T>, String> {
+        let mut results: Vec<T> = Vec::new();
 
         for page in 1..u32::MAX {
-
-            let url = format!(
-                "{}/api/v4/groups/{}/projects?per_page={}&page={}",
-                self.url,
-                self.group,
-                PER_PAGE,
-                page
-            );
+            let url = format!("{}?per_page={}&page={}", url, PER_PAGE, page);
             trace!("URL: {}", url);
 
             let res = client.get(&url).headers(headers.clone()).send().or_else(
@@ -137,15 +118,90 @@ impl Provider for GitLab {
                 }
             };
 
-            let projects_page: Vec<Project> = serde_json::from_reader(res).or_else(|e| {
+            let results_page: Vec<T> = serde_json::from_reader(res).or_else(|e| {
                 Err(format!("Unable to parse response as JSON ({})", e))
             })?;
 
-            projects.extend(projects_page);
+            results.extend(results_page);
 
             if !has_next {
                 break;
             }
+        }
+        Ok(results)
+    }
+
+    fn get_projects(
+        &self,
+        id: &str,
+        client: &Client,
+        headers: &Headers,
+    ) -> Result<Vec<Project>, String> {
+        let url = format!("{}/api/v4/groups/{}/projects", self.url, id);
+
+        self.get_paged::<Project>(&url, &client, &headers)
+    }
+
+    fn get_subgroups(
+        &self,
+        id: &str,
+        client: &Client,
+        headers: &Headers,
+    ) -> Result<Vec<String>, String> {
+        let url = format!("{}/api/v4/groups/{}/subgroups", self.url, id);
+
+        let groups = self.get_paged::<Group>(&url, &client, &headers)?;
+
+        let mut subgroups: Vec<String> = vec![id.to_owned()];
+
+        for group in groups {
+            subgroups.extend(self.get_subgroups(
+                &format!("{}", group.id),
+                &client,
+                &headers,
+            )?);
+        }
+
+        Ok(subgroups)
+    }
+}
+
+impl Provider for GitLab {
+    fn get_label(&self) -> String {
+        format!("{}/{}", self.url, self.group)
+    }
+
+    fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
+
+        #[cfg(feature = "native-tls")]
+        let tls =
+            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
+        #[cfg(not(feature = "native-tls"))]
+        let tls = hyper_rustls::TlsClient::new();
+
+        let connector = HttpsConnector::new(tls);
+        let client = Client::with_connector(connector);
+
+        let use_http = self.use_http;
+
+        let mut headers = Headers::new();
+        match self.private_token.clone() {
+            Some(token) => {
+                headers.set(PrivateToken(token));
+            }
+            None => trace!("GITLAB_PRIVATE_TOKEN not set"),
+        }
+
+        let groups = if self.recursive {
+            self.get_subgroups(&self.group, &client, &headers)?
+        } else {
+            vec![self.group.clone()]
+        };
+
+        let mut projects: Vec<Project> = Vec::new();
+
+        for group in groups {
+            projects.extend(self.get_projects(&group, &client, &headers)?);
         }
 
         let mut mirrors: Vec<MirrorResult> = Vec::new();

@@ -134,6 +134,7 @@ fn main() {
                 group: mirror_group.to_owned(),
                 use_http: use_http,
                 private_token: gitlab_private_token,
+                recursive: true,
             };
             do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file)
         }
@@ -150,7 +151,9 @@ fn main() {
     };
 
     match res {
-        Ok(_) => { info!("All done"); }
+        Ok(_) => {
+            info!("All done");
+        }
         Err(e) => {
             error!("Error occured: {}", e);
             exit(2); // TODO: Return code in erro

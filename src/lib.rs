@@ -314,11 +314,7 @@ pub fn do_mirror(
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", mirror_dir);
     fs::create_dir_all(&mirror_dir).map_err(|e| {
-        format!(
-            "Unable to create mirror dir: {:?} ({})",
-            &mirror_dir,
-            e
-        )
+        format!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e)
     })?;
 
     // Check that only one instance is running against a mirror directory
