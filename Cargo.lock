@@ -159,7 +159,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "git-mirror"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.29.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -167,7 +167,7 @@ dependencies = [
  "hyper 0.10.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-native-tls 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-rustls 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
