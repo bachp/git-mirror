@@ -88,6 +88,8 @@ impl GitLab {
                 },
             )?;
 
+            debug!("HTTP Status Received: {}", res.status);
+
             if res.status != StatusCode::Ok {
                 if res.status == StatusCode::Unauthorized {
                     return Err(format!(
@@ -189,7 +191,7 @@ impl Provider for GitLab {
             Some(token) => {
                 headers.set(PrivateToken(token));
             }
-            None => trace!("GITLAB_PRIVATE_TOKEN not set"),
+            None => warn!("GITLAB_PRIVATE_TOKEN not set"),
         }
 
         let groups = if self.recursive {
