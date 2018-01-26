@@ -1,6 +1,6 @@
 [package]
 name = "git-mirror"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 
 [features]
