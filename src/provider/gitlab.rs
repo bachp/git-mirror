@@ -195,7 +195,10 @@ impl Provider for GitLab {
         }
 
         let groups = if self.recursive {
-            self.get_subgroups(&self.group, &client, &headers)?
+            self.get_subgroups(&self.group, &client, &headers).or_else(|e| -> Result<Vec<String>, String> {
+                    warn!("Unable to get subgroups: {}", e);
+                    Ok(vec![self.group.clone()])
+                })?
         } else {
             vec![self.group.clone()]
         };
