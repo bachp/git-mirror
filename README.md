@@ -48,7 +48,15 @@ A list of currently supported fields
 
 Any other fields are ignored
 
-### Building & Installing
+## Docker
+
+There is also a docker image available. It can be used as follows:
+
+```
+docker run -e GITLAB_PRIVATE_TOKEN="x" bachp/git-mirror git-mirror -g mirror -u http://gitlab.example.com
+```
+
+## Building & Installing
 
 In order to build this project you need a least rust v1.18.0. The easiest way to get rust is via: [rustup.rs](http://rustup.rs/)
 
