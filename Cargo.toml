@@ -7,10 +7,10 @@ authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 native-tls = [ "hyper-native-tls" ]
 
 [dependencies]
-clap = "2.29.2"
-chrono = "0.4.0"
-log = "0.3.9"
-stderrlog = "0.2.3"
+clap = "2.30"
+chrono = "0.4"
+log = "0.4"
+stderrlog = "0.3.0"
 slug = "0.1.2"
 threadpool = "1.7.1"
 hyper = "0.10.13"
@@ -21,4 +21,4 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.7.3"
 fs2 = "0.4.3"
-prometheus = "0.3.10"
+prometheus = "0.3.13"
