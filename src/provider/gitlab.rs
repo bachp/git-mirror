@@ -141,7 +141,7 @@ impl GitLab {
     ) -> Result<Vec<Project>, String> {
         let url = format!("{}/api/v4/groups/{}/projects", self.url, id);
 
-        self.get_paged::<Project>(&url, &client, &headers)
+        self.get_paged::<Project>(&url, client, headers)
     }
 
     fn get_subgroups(
@@ -152,15 +152,15 @@ impl GitLab {
     ) -> Result<Vec<String>, String> {
         let url = format!("{}/api/v4/groups/{}/subgroups", self.url, id);
 
-        let groups = self.get_paged::<Group>(&url, &client, &headers)?;
+        let groups = self.get_paged::<Group>(&url, client, headers)?;
 
         let mut subgroups: Vec<String> = vec![id.to_owned()];
 
         for group in groups {
             subgroups.extend(self.get_subgroups(
                 &format!("{}", group.id),
-                &client,
-                &headers,
+                client,
+                headers,
             )?);
         }
 
@@ -226,7 +226,7 @@ impl Provider for GitLab {
                     };
                     let m = Mirror {
                         origin: desc.origin,
-                        destination: destination,
+                        destination,
                     };
                     mirrors.push(Ok(m));
                 }
@@ -236,6 +236,6 @@ impl Provider for GitLab {
             }
         }
 
-        return Ok(mirrors);
+        Ok(mirrors)
     }
 }

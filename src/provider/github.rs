@@ -118,7 +118,7 @@ impl Provider for GitHub {
                     let destination = if use_http { p.clone_url } else { p.ssh_url };
                     let m = Mirror {
                         origin: desc.origin,
-                        destination: destination,
+                        destination,
                     };
                     mirrors.push(Ok(m));
                 }
@@ -127,6 +127,6 @@ impl Provider for GitHub {
                 }
             }
         }
-        return Ok(mirrors);
+        Ok(mirrors)
     }
 }

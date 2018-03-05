@@ -48,7 +48,7 @@ use provider::{MirrorResult, Provider};
 
 
 pub fn mirror_repo(
-    mirror_dir: String,
+    mirror_dir: &str,
     origin: &str,
     destination: &str,
     dry_run: bool,
@@ -69,7 +69,7 @@ pub fn mirror_repo(
         }
         debug!("Level {:?}", log_enabled!(Info));
         git.env("GIT_TERMINAL_PROMPT", "0");
-        return git;
+        git
     };
 
     git_base_cmd().arg("--version").status().or_else(|e| {
@@ -188,7 +188,7 @@ pub fn mirror_repo(
         ));
     }
 
-    return Ok(1);
+    Ok(1)
 }
 
 fn run_sync_task(
@@ -196,7 +196,7 @@ fn run_sync_task(
     worker_count: usize,
     mirror_dir: &str,
     dry_run: bool,
-    label: String,
+    label: &str,
 ) {
     // Give the work to the worker pool
     let pool = ThreadPool::new(worker_count);
@@ -222,7 +222,7 @@ fn run_sync_task(
 
     let (tx, rx) = channel();
     for x in v {
-        proj_total.with_label_values(&[&label]).inc();
+        proj_total.with_label_values(&[label]).inc();
         match x {
             Ok(x) => {
                 let tx = tx.clone();
@@ -231,7 +231,7 @@ fn run_sync_task(
                 let proj_ok = proj_ok.clone();
                 let proj_start = proj_start.clone();
                 let proj_end = proj_end.clone();
-                let label = label.clone();
+                let label = label.to_string();
                 pool.execute(move || {
                     println!(
                         "START [{}]: {} -> {}",
@@ -242,7 +242,7 @@ fn run_sync_task(
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
-                    let c = match mirror_repo(mirror_dir, &x.origin, &x.destination, dry_run) {
+                    let c = match mirror_repo(&mirror_dir, &x.origin, &x.destination, dry_run) {
                         Ok(c) => {
                             println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
                             proj_end
@@ -277,7 +277,7 @@ fn run_sync_task(
                 n += 1;
             }
             Err(e) => {
-                proj_skip.with_label_values(&[&label]).inc();
+                proj_skip.with_label_values(&[label]).inc();
                 warn!("Skipping: {:?}", e);
             }
         };
@@ -285,7 +285,7 @@ fn run_sync_task(
 
     println!(
         "DONE [{2}]: {0}/{1}",
-        rx.iter().take(n).fold(0, |a, b| a + b),
+        rx.iter().take(n).sum::<u8>(),
         n,
         Local::now()
     );
@@ -342,7 +342,7 @@ pub fn do_mirror(
         Utc::now().timestamp() as f64,
     );
 
-    run_sync_task(v, worker_count, mirror_dir, dry_run, provider.get_label());
+    run_sync_task(v, worker_count, mirror_dir, dry_run, &provider.get_label());
 
     end_time.with_label_values(&[&provider.get_label()]).set(
         Utc::now().timestamp() as

@@ -132,7 +132,7 @@ fn main() {
             let p = GitLab {
                 url: gitlab_url.to_owned(),
                 group: mirror_group.to_owned(),
-                use_http: use_http,
+                use_http,
                 private_token: gitlab_private_token,
                 recursive: true,
             };
@@ -142,7 +142,7 @@ fn main() {
             let p = GitHub {
                 url: gitlab_url.to_owned(),
                 org: mirror_group.to_owned(),
-                use_http: use_http,
+                use_http,
                 private_token: gitlab_private_token,
                 useragent: format!("{}/{}", crate_name!(), crate_version!()),
             };
