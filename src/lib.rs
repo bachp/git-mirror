@@ -4,7 +4,6 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::process::{Command, Stdio};
 use std::fs;
 use std::path::Path;
 use std::fs::File;
@@ -16,7 +15,6 @@ use fs2::FileExt;
 // Used for error and debug logging
 #[macro_use]
 extern crate log;
-use log::LogLevel::{Debug, Info};
 
 // Used to create sane local directory names
 extern crate slug;
@@ -46,11 +44,14 @@ use prometheus::{Encoder, TextEncoder};
 
 use provider::{MirrorResult, Provider};
 
+use git::{Git, GitWrapper};
+
 pub fn mirror_repo(
     mirror_dir: &str,
     origin: &str,
     destination: &str,
     dry_run: bool,
+    git_executable: String,
 ) -> Result<u8, String> {
     if dry_run {
         return Ok(1);
@@ -59,120 +60,25 @@ pub fn mirror_repo(
     let origin_dir = Path::new(&mirror_dir).join(slugify(origin));
     debug!("Using origin dir: {0:?}", origin_dir);
 
-    // Group common setting for al git commands in this closure
-    let git_base_cmd = || {
-        let mut git = Command::new("git");
-        if !log_enabled!(Debug) {
-            git.stdout(Stdio::null());
-        }
-        debug!("Level {:?}", log_enabled!(Info));
-        git.env("GIT_TERMINAL_PROMPT", "0");
-        git
-    };
+    let git = Git::new(git_executable);
 
-    git_base_cmd().arg("--version").status().or_else(|e| {
-        Err(format!(
-            "Unable to execute git --version, make sure git is installed. ({})",
-            e
-        ))
-    })?;
+    git.git_version()?;
 
     if origin_dir.is_dir() {
         info!("Local Update for {}", origin);
 
-        let mut set_url_cmd = git_base_cmd();
-        set_url_cmd
-            .current_dir(&origin_dir)
-            .args(&["remote", "set-url", "origin"])
-            .arg(origin);
-
-        trace!("Set url command started: {:?}", set_url_cmd);
-
-        let out = set_url_cmd.status().or_else(|e| {
-            Err(format!(
-                "Unable to execute set url command: {:?} ({})",
-                set_url_cmd, e
-            ))
-        })?;
-
-        if !out.success() {
-            return Err(format!(
-                "Set url command ({:?}) failed with exit code: {}",
-                set_url_cmd, out
-            ));
-        }
-
-        let mut remote_update_cmd = git_base_cmd();
-        remote_update_cmd
-            .current_dir(&origin_dir)
-            .args(&["remote", "update"]);
-
-        trace!("Remote update command started: {:?}", remote_update_cmd);
-
-        let out = remote_update_cmd.status().or_else(|e| {
-            Err(format!(
-                "Unable to execute remote update command: {:?} ({})",
-                remote_update_cmd, e
-            ))
-        })?;
-
-        if !out.success() {
-            return Err(format!(
-                "Remote update command ({:?}) failed with exit code: {}",
-                remote_update_cmd, out
-            ));
-        }
+        git.git_update_mirror(origin, &origin_dir)?;
     } else if !origin_dir.exists() {
         info!("Local Checkout for {}", origin);
 
-        let mut clone_cmd = git_base_cmd();
-        clone_cmd
-            .args(&["clone", "--mirror"])
-            .arg(origin)
-            .arg(&origin_dir);
-
-        trace!("Clone command started: {:?}", clone_cmd);
-
-        let out = clone_cmd.status().or_else(|e| {
-            Err(format!(
-                "Unable to execute clone command: {:?} ({})",
-                clone_cmd, e
-            ))
-        })?;
-
-        if !out.success() {
-            return Err(format!(
-                "Clone command ({:?}) failed with exit code: {}",
-                clone_cmd, out
-            ));
-        }
+        git.git_clone_mirror(origin, &origin_dir)?;
     } else {
         return Err(format!("Local origin dir is a file: {:?}", origin_dir));
     }
 
     info!("Push to destination {}", destination);
 
-    let mut push_cmd = git_base_cmd();
-    push_cmd
-        .current_dir(&origin_dir)
-        .args(&["push", "--mirror"])
-        .arg(destination);
-
-    trace!("Push  started: {:?}", push_cmd);
-
-    let out = push_cmd.status().or_else(|e| {
-        Err(format!(
-            "Unable to execute push command: {:?} ({})",
-            push_cmd, e
-        ))
-    })?;
-
-    if !out.success() {
-        return Err(format!(
-            "Push command ({:?}) failed with exit code: {}",
-            push_cmd, out
-        ));
-    }
+    git.git_push_mirror(destination, &origin_dir)?;
 
     Ok(1)
 }
@@ -183,6 +89,7 @@ fn run_sync_task(
     mirror_dir: &str,
     dry_run: bool,
     label: &str,
+    git_executable: String,
 ) {
     // Give the work to the worker pool
     let pool = ThreadPool::new(worker_count);
@@ -218,6 +125,7 @@ fn run_sync_task(
                 let proj_start = proj_start.clone();
                 let proj_end = proj_end.clone();
                 let label = label.to_string();
+                let git_executable = git_executable.to_string();
                 pool.execute(move || {
                     println!(
                         "START [{}]: {} -> {}",
@@ -228,7 +136,13 @@ fn run_sync_task(
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
-                    let c = match mirror_repo(&mirror_dir, &x.origin, &x.destination, dry_run) {
+                    let c = match mirror_repo(
+                        &mirror_dir,
+                        &x.origin,
+                        &x.destination,
+                        dry_run,
+                        git_executable,
+                    ) {
                         Ok(c) => {
                             println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
                             proj_end
@@ -275,12 +189,17 @@ fn run_sync_task(
     );
 }
 
+pub struct MirrorOptions {
+    pub dry_run: bool,
+    pub metrics_file: Option<String>,
+    pub worker_count: usize,
+    pub git_executable: String,
+}
+
 pub fn do_mirror(
-    provider: &Provider,
-    worker_count: usize,
+    provider: &Box<Provider>,
     mirror_dir: &str,
-    dry_run: bool,
-    metrics_file: Option<String>,
+    opts: MirrorOptions,
 ) -> Result<(), String> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
@@ -321,14 +240,21 @@ pub fn do_mirror(
         .with_label_values(&[&provider.get_label()])
         .set(Utc::now().timestamp() as f64);
 
-    run_sync_task(v, worker_count, mirror_dir, dry_run, &provider.get_label());
+    run_sync_task(
+        v,
+        opts.worker_count,
+        mirror_dir,
+        opts.dry_run,
+        &provider.get_label(),
+        opts.git_executable,
+    );
 
     end_time
         .with_label_values(&[&provider.get_label()])
         .set(Utc::now().timestamp() as f64);
 
-    match metrics_file {
-        Some(f) => write_metrics(&f),
+    match opts.metrics_file {
+        Some(ref f) => write_metrics(f),
         None => trace!("Skipping merics file creation"),
     };
 
@@ -342,4 +268,5 @@ fn write_metrics(f: &str) {
     encoder.encode(&metric_familys, &mut file).unwrap();
 }
 
+mod git;
 pub mod provider;

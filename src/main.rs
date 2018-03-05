@@ -20,7 +20,8 @@ use clap::{App, Arg};
 // Load the real functionality
 extern crate git_mirror;
 use git_mirror::do_mirror;
-use git_mirror::provider::{GitHub, GitLab};
+use git_mirror::MirrorOptions;
+use git_mirror::provider::{GitHub, GitLab, Provider};
 
 use std::process::exit;
 
@@ -57,6 +58,7 @@ fn main() {
                 .short("m")
                 .long("mirror-dir")
                 .help("Directory where the local clones are stored")
+                .takes_value(true)
                 .default_value("./mirror-dir"),
         )
         .arg(
@@ -100,6 +102,13 @@ fn main() {
                 )
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("git-executable")
+                .long("git-executable")
+                .help("Git executable to use.")
+                .takes_value(true)
+                .default_value("git"),
+        )
         .after_help(
             "ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
              Private token or Personal access token to access the GitLab API",
@@ -130,33 +139,34 @@ fn main() {
     debug!("Worker count: {}", worker_count);
     let metrics_file = value_t!(m.value_of("metrics-file"), String).ok();
     debug!("Metrics file: {:?}", metrics_file);
+    let git_executable = value_t_or_exit!(m.value_of("git-executable"), String);
+    debug!("Git executable: {:?}", git_executable);
 
-    let provider = value_t_or_exit!(m.value_of("provider"), Providers);
-
-    let res = match provider {
-        Providers::GitLab => {
-            let p = GitLab {
-                url: gitlab_url.to_owned(),
-                group: mirror_group.to_owned(),
-                use_http,
-                private_token: gitlab_private_token,
-                recursive: true,
-            };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file)
-        }
-        Providers::GitHub => {
-            let p = GitHub {
-                url: gitlab_url.to_owned(),
-                org: mirror_group.to_owned(),
-                use_http,
-                private_token: gitlab_private_token,
-                useragent: format!("{}/{}", crate_name!(), crate_version!()),
-            };
-            do_mirror(&p, worker_count, &mirror_dir, dry_run, metrics_file)
-        }
+    let provider: Box<Provider> = match value_t_or_exit!(m.value_of("provider"), Providers) {
+        Providers::GitLab => Box::new(GitLab {
+            url: gitlab_url.to_owned(),
+            group: mirror_group.to_owned(),
+            use_http,
+            private_token: gitlab_private_token,
+            recursive: true,
+        }),
+        Providers::GitHub => Box::new(GitHub {
+            url: gitlab_url.to_owned(),
+            org: mirror_group.to_owned(),
+            use_http,
+            private_token: gitlab_private_token,
+            useragent: format!("{}/{}", crate_name!(), crate_version!()),
+        }),
     };
 
-    match res {
+    let opts = MirrorOptions {
+        dry_run,
+        worker_count,
+        metrics_file,
+        git_executable,
+    };
+
+    match do_mirror(&provider, &mirror_dir, opts) {
         Ok(_) => {
             info!("All done");
         }
