@@ -32,7 +32,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
-use provider::{Mirror, MirrorResult, MirrorError, Provider};
+use provider::{Mirror, MirrorError, MirrorResult, Provider};
 
 #[derive(Debug)]
 pub struct GitLab {
@@ -82,11 +82,11 @@ impl GitLab {
             let url = format!("{}?per_page={}&page={}", url, PER_PAGE, page);
             trace!("URL: {}", url);
 
-            let res = client.get(&url).headers(headers.clone()).send().or_else(
-                |e| {
-                    Err(format!("Unable to connect to: {} ({})", url, e))
-                },
-            )?;
+            let res = client
+                .get(&url)
+                .headers(headers.clone())
+                .send()
+                .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
 
             debug!("HTTP Status Received: {}", res.status);
 
@@ -94,20 +94,17 @@ impl GitLab {
                 if res.status == StatusCode::Unauthorized {
                     return Err(format!(
                         "API call received unautorized ({}) for: {}. \
-                                   Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
-                                   variable is set.",
-                        res.status,
-                        url
+                         Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
+                         variable is set.",
+                        res.status, url
                     ));
                 } else {
                     return Err(format!(
                         "API call received invalid status ({}) for : {}",
-                        res.status,
-                        url
+                        res.status, url
                     ));
                 }
             }
-
 
             let has_next = match res.headers.get::<XNextPage>() {
                 None => {
@@ -120,9 +117,8 @@ impl GitLab {
                 }
             };
 
-            let results_page: Vec<T> = serde_json::from_reader(res).or_else(|e| {
-                Err(format!("Unable to parse response as JSON ({})", e))
-            })?;
+            let results_page: Vec<T> = serde_json::from_reader(res)
+                .or_else(|e| Err(format!("Unable to parse response as JSON ({})", e)))?;
 
             results.extend(results_page);
 
@@ -157,11 +153,7 @@ impl GitLab {
         let mut subgroups: Vec<String> = vec![id.to_owned()];
 
         for group in groups {
-            subgroups.extend(self.get_subgroups(
-                &format!("{}", group.id),
-                client,
-                headers,
-            )?);
+            subgroups.extend(self.get_subgroups(&format!("{}", group.id), client, headers)?);
         }
 
         Ok(subgroups)
@@ -174,7 +166,6 @@ impl Provider for GitLab {
     }
 
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
-
         #[cfg(feature = "native-tls")]
         let tls =
             hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
@@ -195,10 +186,12 @@ impl Provider for GitLab {
         }
 
         let groups = if self.recursive {
-            self.get_subgroups(&self.group, &client, &headers).or_else(|e| -> Result<Vec<String>, String> {
+            self.get_subgroups(&self.group, &client, &headers).or_else(
+                |e| -> Result<Vec<String>, String> {
                     warn!("Unable to get subgroups: {}", e);
                     Ok(vec![self.group.clone()])
-                })?
+                },
+            )?
         } else {
             vec![self.group.clone()]
         };

@@ -12,18 +12,17 @@ use std::cmp;
 extern crate log;
 extern crate stderrlog;
 
-
 // Used to do command line parsing
 #[macro_use]
 extern crate clap;
-use clap::{Arg, App};
+use clap::{App, Arg};
 
 // Load the real functionality
 extern crate git_mirror;
 use git_mirror::do_mirror;
-use git_mirror::provider::{GitLab, GitHub};
+use git_mirror::provider::{GitHub, GitLab};
 
-use std::process::{exit};
+use std::process::exit;
 
 arg_enum!{
     #[derive(Debug)]
@@ -60,15 +59,22 @@ fn main() {
                 .help("Directory where the local clones are stored")
                 .default_value("./mirror-dir"),
         )
-        .arg(Arg::with_name("v").short("v").multiple(true).help(
-            "Verbosity level",
-        ))
-        .arg(Arg::with_name("http").long("https").help(
-            "Use http(s) instead of SSH to sync the GitLab repository",
-        ))
-        .arg(Arg::with_name("dry-run").long("dry-run").help(
-            "Only print what to do without actually running any git commands.",
-        ))
+        .arg(
+            Arg::with_name("v")
+                .short("v")
+                .multiple(true)
+                .help("Verbosity level"),
+        )
+        .arg(
+            Arg::with_name("http")
+                .long("https")
+                .help("Use http(s) instead of SSH to sync the GitLab repository"),
+        )
+        .arg(
+            Arg::with_name("dry-run")
+                .long("dry-run")
+                .help("Only print what to do without actually running any git commands."),
+        )
         .arg(
             Arg::with_name("worker-count")
                 .short("c")
@@ -90,13 +96,13 @@ fn main() {
                 .long("metrics-file")
                 .help(
                     "Location where to store metrics for consumption by \
-                       Prometheus nodeexporter's text file colloctor.",
+                     Prometheus nodeexporter's text file colloctor.",
                 )
                 .takes_value(true),
         )
         .after_help(
             "ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
-                     Private token or Personal access token to access the GitLab API",
+             Private token or Personal access token to access the GitLab API",
         )
         .get_matches();
 

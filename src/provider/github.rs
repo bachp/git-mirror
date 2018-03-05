@@ -13,7 +13,7 @@ extern crate hyper_native_tls;
 #[cfg(not(feature = "native-tls"))]
 extern crate hyper_rustls;
 use hyper::client::Client;
-use hyper::header::{Headers, Accept, UserAgent, qitem};
+use hyper::header::{qitem, Accept, Headers, UserAgent};
 use hyper::status::StatusCode;
 use hyper::net::HttpsConnector;
 
@@ -22,7 +22,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
-use provider::{Mirror, MirrorResult, MirrorError, Provider};
+use provider::{Mirror, MirrorError, MirrorResult, Provider};
 
 pub struct GitHub {
     pub url: String,
@@ -49,14 +49,12 @@ struct Project {
     clone_url: String,
 }
 
-
 impl Provider for GitHub {
     fn get_label(&self) -> String {
         format!("{}/orgs/{}", self.url, self.org)
     }
 
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
-
         #[cfg(feature = "native-tls")]
         let tls =
             hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
@@ -79,31 +77,30 @@ impl Provider for GitHub {
         let url = format!("{}/orgs/{}/repos", self.url, self.org);
         trace!("URL: {}", url);
 
-        let res = client.get(&url).headers(headers).send().or_else(|e| {
-            Err(format!("Unable to connect to: {} ({})", url, e))
-        })?;
+        let res = client
+            .get(&url)
+            .headers(headers)
+            .send()
+            .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
 
         if res.status != StatusCode::Ok {
             if res.status == StatusCode::Unauthorized {
                 return Err(format!(
                     "API call received unautorized ({}) for: {}. \
-                                   Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
-                                   variable is set.",
-                    res.status,
-                    url
+                     Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
+                     variable is set.",
+                    res.status, url
                 ));
             } else {
                 return Err(format!(
                     "API call received invalid status ({}) for : {}",
-                    res.status,
-                    url
+                    res.status, url
                 ));
             }
         }
 
-        let projects: Vec<Project> = serde_json::from_reader(res).or_else(|e| {
-            Err(format!("Unable to parse response as JSON ({:?})", e))
-        })?;
+        let projects: Vec<Project> = serde_json::from_reader(res)
+            .or_else(|e| Err(format!("Unable to parse response as JSON ({:?})", e)))?;
 
         let mut mirrors: Vec<MirrorResult> = Vec::new();
 
@@ -115,7 +112,11 @@ impl Provider for GitHub {
                         continue;
                     }
                     trace!("{0} -> {1}", desc.origin, p.ssh_url);
-                    let destination = if use_http { p.clone_url } else { p.ssh_url };
+                    let destination = if use_http {
+                        p.clone_url
+                    } else {
+                        p.ssh_url
+                    };
                     let m = Mirror {
                         origin: desc.origin,
                         destination,

@@ -42,10 +42,9 @@ use chrono::{Local, Utc};
 // Monitoring
 #[macro_use]
 extern crate prometheus;
-use prometheus::{TextEncoder, Encoder};
+use prometheus::{Encoder, TextEncoder};
 
 use provider::{MirrorResult, Provider};
-
 
 pub fn mirror_repo(
     mirror_dir: &str,
@@ -53,7 +52,6 @@ pub fn mirror_repo(
     destination: &str,
     dry_run: bool,
 ) -> Result<u8, String> {
-
     if dry_run {
         return Ok(1);
     }
@@ -93,71 +91,61 @@ pub fn mirror_repo(
         let out = set_url_cmd.status().or_else(|e| {
             Err(format!(
                 "Unable to execute set url command: {:?} ({})",
-                set_url_cmd,
-                e
+                set_url_cmd, e
             ))
         })?;
 
         if !out.success() {
             return Err(format!(
                 "Set url command ({:?}) failed with exit code: {}",
-                set_url_cmd,
-                out
+                set_url_cmd, out
             ));
         }
 
         let mut remote_update_cmd = git_base_cmd();
-        remote_update_cmd.current_dir(&origin_dir).args(
-            &[
-                "remote",
-                "update",
-            ],
-        );
+        remote_update_cmd
+            .current_dir(&origin_dir)
+            .args(&["remote", "update"]);
 
         trace!("Remote update command started: {:?}", remote_update_cmd);
 
         let out = remote_update_cmd.status().or_else(|e| {
             Err(format!(
                 "Unable to execute remote update command: {:?} ({})",
-                remote_update_cmd,
-                e
+                remote_update_cmd, e
             ))
         })?;
 
         if !out.success() {
             return Err(format!(
                 "Remote update command ({:?}) failed with exit code: {}",
-                remote_update_cmd,
-                out
+                remote_update_cmd, out
             ));
         }
-
     } else if !origin_dir.exists() {
         info!("Local Checkout for {}", origin);
 
         let mut clone_cmd = git_base_cmd();
-        clone_cmd.args(&["clone", "--mirror"]).arg(origin).arg(
-            &origin_dir,
-        );
+        clone_cmd
+            .args(&["clone", "--mirror"])
+            .arg(origin)
+            .arg(&origin_dir);
 
         trace!("Clone command started: {:?}", clone_cmd);
 
         let out = clone_cmd.status().or_else(|e| {
             Err(format!(
                 "Unable to execute clone command: {:?} ({})",
-                clone_cmd,
-                e
+                clone_cmd, e
             ))
         })?;
 
         if !out.success() {
             return Err(format!(
                 "Clone command ({:?}) failed with exit code: {}",
-                clone_cmd,
-                out
+                clone_cmd, out
             ));
         }
-
     } else {
         return Err(format!("Local origin dir is a file: {:?}", origin_dir));
     }
@@ -175,16 +163,14 @@ pub fn mirror_repo(
     let out = push_cmd.status().or_else(|e| {
         Err(format!(
             "Unable to execute push command: {:?} ({})",
-            push_cmd,
-            e
+            push_cmd, e
         ))
     })?;
 
     if !out.success() {
         return Err(format!(
             "Push command ({:?}) failed with exit code: {}",
-            push_cmd,
-            out
+            push_cmd, out
         ));
     }
 
@@ -202,12 +188,12 @@ fn run_sync_task(
     let pool = ThreadPool::new(worker_count);
     let mut n = 0;
 
-    let proj_total = register_counter_vec!("git_mirror_total", "Total projects", &["mirror"])
-        .unwrap();
-    let proj_skip = register_counter_vec!("git_mirror_skip", "Skipped projects", &["mirror"])
-        .unwrap();
-    let proj_fail = register_counter_vec!("git_mirror_fail", "Failed projects", &["mirror"])
-        .unwrap();
+    let proj_total =
+        register_counter_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
+    let proj_skip =
+        register_counter_vec!("git_mirror_skip", "Skipped projects", &["mirror"]).unwrap();
+    let proj_fail =
+        register_counter_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
     let proj_ok = register_counter_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
     let proj_start = register_gauge_vec!(
         "git_mirror_project_start",
@@ -265,9 +251,7 @@ fn run_sync_task(
                             proj_fail.with_label_values(&[&label]).inc();
                             error!(
                                 "Unable to sync repo {} -> {} ({})",
-                                x.origin,
-                                x.destination,
-                                e
+                                x.origin, x.destination, e
                             );
                             0
                         }
@@ -289,9 +273,7 @@ fn run_sync_task(
         n,
         Local::now()
     );
-
 }
-
 
 pub fn do_mirror(
     provider: &Provider,
@@ -313,41 +295,37 @@ pub fn do_mirror(
 
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", mirror_dir);
-    fs::create_dir_all(&mirror_dir).map_err(|e| {
-        format!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e)
-    })?;
+    fs::create_dir_all(&mirror_dir)
+        .map_err(|e| format!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e))?;
 
     // Check that only one instance is running against a mirror directory
     let lockfile_path = Path::new(mirror_dir).join("git-mirror.lock");
-    let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
-        format!("Unable to open lockfile: {:?} ({})", &lockfile_path, e)
-    })?;
+    let lockfile = fs::File::create(&lockfile_path)
+        .map_err(|e| format!("Unable to open lockfile: {:?} ({})", &lockfile_path, e))?;
 
     lockfile.try_lock_exclusive().map_err(|e| {
         format!(
             "Another instance is already running aginst the same mirror directory: {:?} ({})",
-            &mirror_dir,
-            e
+            &mirror_dir, e
         )
     })?;
 
     trace!("Aquired lockfile: {:?}", &lockfile);
 
     // Get the list of repos to sync from gitlabsss
-    let v = provider.get_mirror_repos().map_err(|e| -> String {
-        format!("Unable to get mirror repos ({})", e)
-    })?;
+    let v = provider
+        .get_mirror_repos()
+        .map_err(|e| -> String { format!("Unable to get mirror repos ({})", e) })?;
 
-    start_time.with_label_values(&[&provider.get_label()]).set(
-        Utc::now().timestamp() as f64,
-    );
+    start_time
+        .with_label_values(&[&provider.get_label()])
+        .set(Utc::now().timestamp() as f64);
 
     run_sync_task(v, worker_count, mirror_dir, dry_run, &provider.get_label());
 
-    end_time.with_label_values(&[&provider.get_label()]).set(
-        Utc::now().timestamp() as
-            f64,
-    );
+    end_time
+        .with_label_values(&[&provider.get_label()])
+        .set(Utc::now().timestamp() as f64);
 
     match metrics_file {
         Some(f) => write_metrics(&f),
