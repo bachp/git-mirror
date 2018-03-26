@@ -36,8 +36,7 @@ impl Git {
         debug!("Run command: {:?}", cmd);
         match cmd.output() {
             Ok(o) => {
-                if o.status.success() {
-                    let stdout = String::from_utf8_lossy(&o.stdout).to_string();
+                let stdout = String::from_utf8_lossy(&o.stdout).to_string();
                     if !stdout.is_empty() {
                         debug!("Stdout: {}", stdout);
                     }
@@ -45,6 +44,7 @@ impl Git {
                     if !stderr.is_empty() {
                         debug!("Stderr: {}", stderr);
                     }
+                if o.status.success() {
                     Ok(())
                 } else {
                     Err(format!(
