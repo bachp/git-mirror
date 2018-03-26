@@ -89,7 +89,7 @@ impl GitWrapper for Git {
         let mut remote_update_cmd = self.git_base_cmd();
         remote_update_cmd
             .current_dir(&repo_dir)
-            .args(&["remote", "update"]);
+            .args(&["remote", "update", "--prune"]);
 
         self.run_cmd(remote_update_cmd)
     }
