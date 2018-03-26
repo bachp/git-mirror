@@ -48,9 +48,10 @@ impl Git {
                     Ok(())
                 } else {
                     Err(format!(
-                        "Command {:?} failed with exist code: {}",
+                        "Command {:?} failed with exist code: {}, Stderr: {}",
                         cmd,
-                        o.status.code().unwrap_or_default()
+                        o.status.code().unwrap_or_default(),
+                        stderr
                     ))
                 }
             }
