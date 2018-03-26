@@ -17,8 +17,8 @@ extern crate hyper_native_tls;
 extern crate hyper_rustls;
 use hyper::client::Client;
 use hyper::header::Headers;
-use hyper::status::StatusCode;
 use hyper::net::HttpsConnector;
+use hyper::status::StatusCode;
 
 // Custom header used to access the gitlab API
 // See: https://docs.gitlab.com/ce/api/#authentication

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 use std::result;
 
 type Result = result::Result<(), String>;
@@ -37,13 +37,13 @@ impl Git {
         match cmd.output() {
             Ok(o) => {
                 let stdout = String::from_utf8_lossy(&o.stdout).to_string();
-                    if !stdout.is_empty() {
-                        debug!("Stdout: {}", stdout);
-                    }
-                    let stderr = String::from_utf8_lossy(&o.stderr).to_string();
-                    if !stderr.is_empty() {
-                        debug!("Stderr: {}", stderr);
-                    }
+                if !stdout.is_empty() {
+                    debug!("Stdout: {}", stdout);
+                }
+                let stderr = String::from_utf8_lossy(&o.stderr).to_string();
+                if !stderr.is_empty() {
+                    debug!("Stderr: {}", stderr);
+                }
                 if o.status.success() {
                     Ok(())
                 } else {

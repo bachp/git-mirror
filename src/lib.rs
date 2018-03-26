@@ -5,8 +5,8 @@
  */
 
 use std::fs;
-use std::path::Path;
 use std::fs::File;
+use std::path::Path;
 
 // File locking
 extern crate fs2;
@@ -30,8 +30,8 @@ extern crate serde_derive;
 
 // Used to allow multiple paralell sync tasks
 extern crate threadpool;
-use threadpool::ThreadPool;
 use std::sync::mpsc::channel;
+use threadpool::ThreadPool;
 
 // Time handling
 extern crate chrono;

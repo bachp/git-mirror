@@ -14,8 +14,8 @@ extern crate hyper_native_tls;
 extern crate hyper_rustls;
 use hyper::client::Client;
 use hyper::header::{qitem, Accept, Headers, UserAgent};
-use hyper::status::StatusCode;
 use hyper::net::HttpsConnector;
+use hyper::status::StatusCode;
 
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::env;
 use std::cmp;
+use std::env;
 
 // Used for error and debug logging
 #[macro_use]
@@ -19,8 +19,8 @@ use clap::{App, Arg};
 
 // Load the real functionality
 extern crate git_mirror;
-use git_mirror::do_mirror;
 use git_mirror::MirrorOptions;
+use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
 
 use std::process::exit;
