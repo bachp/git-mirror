@@ -19,9 +19,9 @@ use clap::{App, Arg};
 
 // Load the real functionality
 extern crate git_mirror;
-use git_mirror::MirrorOptions;
 use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
+use git_mirror::MirrorOptions;
 
 use std::process::exit;
 
@@ -38,12 +38,23 @@ fn main() {
         .author(crate_authors!())
         .version(crate_version!())
         .arg(
+            Arg::with_name("provider")
+                .short("p")
+                .long("provider")
+                .help("Provider to use for fetching repositories")
+                .takes_value(true)
+                .possible_values(&Providers::variants())
+                .default_value("GitLab"),
+        )
+        .arg(
             Arg::with_name("url")
                 .short("u")
                 .long("url")
                 .help("URL of the instance to get repositories from")
-                .default_value_if("provider", Some("GitLab"), "https://gitlab.com")
-                .default_value_if("provider", Some("GitHub"), "https://api.github.com"),
+                .default_value_ifs(&[
+                    ("provider", Some("GitLab"), "https://gitlab.com"),
+                    ("provider", Some("GitHub"), "https://api.github.com"),
+                ]),
         )
         .arg(
             Arg::with_name("group")
@@ -83,15 +94,6 @@ fn main() {
                 .long("worker-count")
                 .help("Number of concurrent mirror jobs")
                 .default_value("1"),
-        )
-        .arg(
-            Arg::with_name("provider")
-                .short("p")
-                .long("provider")
-                .help("Provider to use for fetching repositories")
-                .takes_value(true)
-                .possible_values(&Providers::variants())
-                .default_value("GitLab"),
         )
         .arg(
             Arg::with_name("metrics-file")
