@@ -7,10 +7,10 @@ Gitlab Mirror will watch a GitLab group and keep it in sync with external git re
 1. Create group on your gitlab instance or gitlab.com. e.g. `mirror-test`
 2. Add a repository you like to sync to. e.g `my-project`
 3. Add a description to the project in YAML format containing an `origin` field. e.g. `origin: https://git.example.org/my-project.git`
-4. Execute  set the `GITLAB_PRIVATE_TOKEN` environment variable a personal access token or your private token and execute `git-mirror`
+4. Execute  set the `PRIVATE_TOKEN` environment variable a personal access token or your private token and execute `git-mirror`
 
 ``` sh
-export GITLAB_PRIVATE_TOKEN="<personal-access-token>"
+export PRIVATE_TOKEN="<personal-access-token>"
 git-mirror -g mirror-test
 ```
 
@@ -53,7 +53,7 @@ Any other fields are ignored
 There is also a docker image available. It can be used as follows:
 
 ```
-docker run -e GITLAB_PRIVATE_TOKEN="x" bachp/git-mirror git-mirror -g mirror -u http://gitlab.example.com
+docker run -e PRIVATE_TOKEN="x" bachp/git-mirror git-mirror -g mirror -u http://gitlab.example.com
 ```
 
 ## Building & Installing

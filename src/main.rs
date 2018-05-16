@@ -111,9 +111,12 @@ fn main() {
                 .takes_value(true)
                 .default_value("git"),
         )
-        .after_help(
-            "ENVIRONMENT:\n    GITLAB_PRIVATE_TOKEN    \
-             Private token or Personal access token to access the GitLab API",
+        .arg(
+            Arg::with_name("private-token")
+                .long("private-token")
+                .help("Private token or Personal access token to access the GitLab or GitHub API")
+                .env("PRIVATE_TOKEN")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -123,8 +126,6 @@ fn main() {
         .verbosity(cmp::min(m.occurrences_of("v") as usize, 4))
         .init()
         .unwrap();
-
-    let gitlab_private_token = env::var("GITLAB_PRIVATE_TOKEN").ok();
 
     // Make sense of the arguments
     let mirror_dir = value_t_or_exit!(m.value_of("mirror-dir"), String);
@@ -143,20 +144,33 @@ fn main() {
     debug!("Metrics file: {:?}", metrics_file);
     let git_executable = value_t_or_exit!(m.value_of("git-executable"), String);
     debug!("Git executable: {:?}", git_executable);
+    let private_token = value_t!(m.value_of("private-token"), String)
+        .or_else(|e| {
+            debug!("Private Token is not set: {}", e);
+            // Backwards compatibility with old GTILAB_PRIVATE_TOKEN variable
+            if let Ok(gitlab_private_token) = env::var("GITLAB_PRIVATE_TOKEN") {
+                warn!("GITLAB_PRIVATE_TOKEN is deprecated, use PRIVATE_TOKEN or --private-token");
+                Ok(gitlab_private_token)
+            } else {
+                // Not token set, just return an empty error
+                Err(())
+            }
+        })
+        .ok();
 
     let provider: Box<Provider> = match value_t_or_exit!(m.value_of("provider"), Providers) {
         Providers::GitLab => Box::new(GitLab {
             url: gitlab_url.to_owned(),
             group: mirror_group.to_owned(),
             use_http,
-            private_token: gitlab_private_token,
+            private_token,
             recursive: true,
         }),
         Providers::GitHub => Box::new(GitHub {
             url: gitlab_url.to_owned(),
             org: mirror_group.to_owned(),
             use_http,
-            private_token: gitlab_private_token,
+            private_token,
             useragent: format!("{}/{}", crate_name!(), crate_version!()),
         }),
     };
