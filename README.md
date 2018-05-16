@@ -1,6 +1,6 @@
-# Gitlab Mirror
+# Git Mirror
 
-Gitlab Mirror will watch a GitLab group and keep it in sync with external git repositories.
+Git Mirror will watch a GitLab or GitHub groups and keep it in sync with external git repositories.
 
 ## Usage
 
@@ -47,6 +47,19 @@ A list of currently supported fields
 - `destination` Reserved for future use
 
 Any other fields are ignored
+
+### Mirror to GitHub
+
+`git-mirror` also supports mirroring to GitHub.
+
+This can be done by specifying GitHub as provider:
+
+``` sh
+export PRIVATE_TOKEN="<personal-access-token>"
+git-mirror -g mirror-test -p GitHub
+```
+
+This has been tested against github.com but it might also work with on premise installations of GitHub.
 
 ## Docker
 
