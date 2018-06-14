@@ -224,7 +224,7 @@ pub fn do_mirror(
 
     lockfile.try_lock_exclusive().map_err(|e| {
         format!(
-            "Another instance is already running aginst the same mirror directory: {:?} ({})",
+            "Another instance is already running against the same mirror directory: {:?} ({})",
             &mirror_dir, e
         )
     })?;
@@ -255,7 +255,7 @@ pub fn do_mirror(
 
     match opts.metrics_file {
         Some(ref f) => write_metrics(f),
-        None => trace!("Skipping merics file creation"),
+        None => trace!("Skipping metrics file creation"),
     };
 
     Ok(())
