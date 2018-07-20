@@ -17,8 +17,8 @@ header! { (PrivateToken, "PRIVATE-TOKEN") => [String] }
 // Custom header to check for pagination
 header! { (XNextPage, "X-Next-Page") => [u32] }
 
-use reqwest::{Client,StatusCode};
 use reqwest::header::Headers;
+use reqwest::{Client, StatusCode};
 
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;
@@ -89,12 +89,14 @@ impl GitLab {
                         "API call received unautorized ({}) for: {}. \
                          Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
                          variable is set.",
-                        res.status(), url
+                        res.status(),
+                        url
                     ));
                 } else {
                     return Err(format!(
                         "API call received invalid status ({}) for : {}",
-                        res.status(), url
+                        res.status(),
+                        url
                     ));
                 }
             }

@@ -8,8 +8,8 @@
 extern crate log;
 
 // Used for github API access via HTTPS
-use reqwest::{Client,StatusCode};
-use reqwest::header::{Headers,UserAgent,Accept,qitem};
+use reqwest::header::{qitem, Accept, Headers, UserAgent};
+use reqwest::{Client, StatusCode};
 
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;
@@ -57,9 +57,9 @@ impl Provider for GitHub {
         // Github rejects requests without user agent
         headers.set(UserAgent::new(self.useragent.to_owned()));
         // Set the accept header to make sure the v3 api is used
-        headers.set(Accept(vec![
-            qitem("application/vnd.github.v3+json".parse().unwrap()),
-        ]));
+        headers.set(Accept(vec![qitem(
+            "application/vnd.github.v3+json".parse().unwrap(),
+        )]));
 
         let url = format!("{}/orgs/{}/repos", self.url, self.org);
         trace!("URL: {}", url);
@@ -76,12 +76,14 @@ impl Provider for GitHub {
                     "API call received unautorized ({}) for: {}. \
                      Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
                      variable is set.",
-                    res.status(), url
+                    res.status(),
+                    url
                 ));
             } else {
                 return Err(format!(
                     "API call received invalid status ({}) for : {}",
-                    res.status(), url
+                    res.status(),
+                    url
                 ));
             }
         }
