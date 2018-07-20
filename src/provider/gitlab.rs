@@ -10,22 +10,15 @@ use std::u32;
 // Used for error and debug logging
 extern crate log;
 
-// Used for gitlab API access via HTTPS
-#[cfg(feature = "native-tls")]
-extern crate hyper_native_tls;
-#[cfg(not(feature = "native-tls"))]
-extern crate hyper_rustls;
-use hyper::client::Client;
-use hyper::header::Headers;
-use hyper::net::HttpsConnector;
-use hyper::status::StatusCode;
-
 // Custom header used to access the gitlab API
 // See: https://docs.gitlab.com/ce/api/#authentication
 header! { (PrivateToken, "PRIVATE-TOKEN") => [String] }
 
 // Custom header to check for pagination
 header! { (XNextPage, "X-Next-Page") => [u32] }
+
+use reqwest::{Client,StatusCode};
+use reqwest::header::Headers;
 
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;
@@ -88,25 +81,25 @@ impl GitLab {
                 .send()
                 .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
 
-            debug!("HTTP Status Received: {}", res.status);
+            debug!("HTTP Status Received: {}", res.status());
 
-            if res.status != StatusCode::Ok {
-                if res.status == StatusCode::Unauthorized {
+            if res.status() != StatusCode::Ok {
+                if res.status() == StatusCode::Unauthorized {
                     return Err(format!(
                         "API call received unautorized ({}) for: {}. \
                          Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
                          variable is set.",
-                        res.status, url
+                        res.status(), url
                     ));
                 } else {
                     return Err(format!(
                         "API call received invalid status ({}) for : {}",
-                        res.status, url
+                        res.status(), url
                     ));
                 }
             }
 
-            let has_next = match res.headers.get::<XNextPage>() {
+            let has_next = match res.headers().get::<XNextPage>() {
                 None => {
                     trace!("No more pages");
                     false
@@ -166,14 +159,7 @@ impl Provider for GitLab {
     }
 
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
-        #[cfg(feature = "native-tls")]
-        let tls =
-            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
-        #[cfg(not(feature = "native-tls"))]
-        let tls = hyper_rustls::TlsClient::new();
-
-        let connector = HttpsConnector::new(tls);
-        let client = Client::with_connector(connector);
+        let client = Client::new();
 
         let use_http = self.use_http;
 

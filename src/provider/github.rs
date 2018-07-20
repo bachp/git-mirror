@@ -7,15 +7,9 @@
 // Used for error and debug logging
 extern crate log;
 
-// Used for gitlab API access via HTTPS
-#[cfg(feature = "native-tls")]
-extern crate hyper_native_tls;
-#[cfg(not(feature = "native-tls"))]
-extern crate hyper_rustls;
-use hyper::client::Client;
-use hyper::header::{qitem, Accept, Headers, UserAgent};
-use hyper::net::HttpsConnector;
-use hyper::status::StatusCode;
+// Used for github API access via HTTPS
+use reqwest::{Client,StatusCode};
+use reqwest::header::{Headers,UserAgent,Accept,qitem};
 
 // Used to serialize JSON and YAML responses from the API
 extern crate serde;
@@ -55,20 +49,13 @@ impl Provider for GitHub {
     }
 
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
-        #[cfg(feature = "native-tls")]
-        let tls =
-            hyper_native_tls::NativeTlsClient::new().expect("Unable to initialize TLS system");
-        #[cfg(not(feature = "native-tls"))]
-        let tls = hyper_rustls::TlsClient::new();
-
-        let connector = HttpsConnector::new(tls);
-        let client = Client::with_connector(connector);
+        let client = Client::new();
 
         let use_http = self.use_http;
 
         let mut headers = Headers::new();
         // Github rejects requests without user agent
-        headers.set(UserAgent(self.useragent.to_owned()));
+        headers.set(UserAgent::new(self.useragent.to_owned()));
         // Set the accept header to make sure the v3 api is used
         headers.set(Accept(vec![
             qitem("application/vnd.github.v3+json".parse().unwrap()),
@@ -83,18 +70,18 @@ impl Provider for GitHub {
             .send()
             .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
 
-        if res.status != StatusCode::Ok {
-            if res.status == StatusCode::Unauthorized {
+        if res.status() != StatusCode::Ok {
+            if res.status() == StatusCode::Unauthorized {
                 return Err(format!(
                     "API call received unautorized ({}) for: {}. \
                      Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
                      variable is set.",
-                    res.status, url
+                    res.status(), url
                 ));
             } else {
                 return Err(format!(
                     "API call received invalid status ({}) for : {}",
-                    res.status, url
+                    res.status(), url
                 ));
             }
         }

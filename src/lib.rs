@@ -20,9 +20,10 @@ extern crate log;
 extern crate slug;
 use self::slug::slugify;
 
-// UMacros used for hyper
+// We need the header! macro from hyper
 #[macro_use]
 extern crate hyper;
+extern crate reqwest;
 
 // Macros for serde
 #[macro_use]
