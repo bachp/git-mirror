@@ -30,9 +30,9 @@ extern crate reqwest;
 extern crate serde_derive;
 
 // Used to allow multiple paralell sync tasks
-extern crate threadpool;
-use std::sync::mpsc::channel;
-use threadpool::ThreadPool;
+extern crate rayon;
+
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
 extern crate chrono;
@@ -53,7 +53,7 @@ pub fn mirror_repo(
     destination: &str,
     dry_run: bool,
     git_executable: String,
-) -> Result<u8, String> {
+) -> Result<u32, String> {
     if dry_run {
         return Ok(1);
     }
@@ -85,16 +85,18 @@ pub fn mirror_repo(
 }
 
 fn run_sync_task(
-    v: Vec<MirrorResult>,
+    v: &[MirrorResult],
     worker_count: usize,
     mirror_dir: &str,
     dry_run: bool,
     label: &str,
-    git_executable: String,
+    git_executable: &str,
 ) {
     // Give the work to the worker pool
-    let pool = ThreadPool::new(worker_count);
-    let mut n = 0;
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(worker_count)
+        .build_global()
+        .unwrap();
 
     let proj_total =
         register_counter_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
@@ -114,20 +116,20 @@ fn run_sync_task(
         &["origin", "destination", "mirror"]
     ).unwrap();
 
-    let (tx, rx) = channel();
-    for x in v {
-        proj_total.with_label_values(&[label]).inc();
-        match x {
-            Ok(x) => {
-                let tx = tx.clone();
-                let mirror_dir = mirror_dir.to_owned().clone();
-                let proj_fail = proj_fail.clone();
-                let proj_ok = proj_ok.clone();
-                let proj_start = proj_start.clone();
-                let proj_end = proj_end.clone();
-                let label = label.to_string();
-                let git_executable = git_executable.to_string();
-                pool.execute(move || {
+    let total = v.len();
+    let success = v
+        .par_iter()
+        .map(|x| {
+            proj_total.with_label_values(&[label]).inc();
+            match x {
+                Ok(x) => {
+                    let mirror_dir = mirror_dir.to_owned().clone();
+                    let proj_fail = proj_fail.clone();
+                    let proj_ok = proj_ok.clone();
+                    let proj_start = proj_start.clone();
+                    let proj_end = proj_end.clone();
+                    let label = label.to_string();
+                    let git_executable = git_executable.to_string();
                     println!(
                         "START [{}]: {} -> {}",
                         Local::now(),
@@ -137,7 +139,7 @@ fn run_sync_task(
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
-                    let c = match mirror_repo(
+                    match mirror_repo(
                         &mirror_dir,
                         &x.origin,
                         &x.destination,
@@ -170,24 +172,18 @@ fn run_sync_task(
                             );
                             0
                         }
-                    };
-                    tx.send(c).unwrap();
-                });
-                n += 1;
+                    }
+                }
+                Err(e) => {
+                    proj_skip.with_label_values(&[label]).inc();
+                    warn!("Skipping: {:?}", e);
+                    0
+                }
             }
-            Err(e) => {
-                proj_skip.with_label_values(&[label]).inc();
-                warn!("Skipping: {:?}", e);
-            }
-        };
-    }
+        })
+        .sum::<u32>();
 
-    println!(
-        "DONE [{2}]: {0}/{1}",
-        rx.iter().take(n).sum::<u8>(),
-        n,
-        Local::now()
-    );
+    println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
 }
 
 pub struct MirrorOptions {
@@ -200,7 +196,7 @@ pub struct MirrorOptions {
 pub fn do_mirror(
     provider: &Box<Provider>,
     mirror_dir: &str,
-    opts: MirrorOptions,
+    opts: &MirrorOptions,
 ) -> Result<(), String> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
@@ -242,12 +238,12 @@ pub fn do_mirror(
         .set(Utc::now().timestamp() as f64);
 
     run_sync_task(
-        v,
+        &v,
         opts.worker_count,
         mirror_dir,
         opts.dry_run,
         &provider.get_label(),
-        opts.git_executable,
+        &opts.git_executable,
     );
 
     end_time

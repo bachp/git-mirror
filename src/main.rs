@@ -182,7 +182,7 @@ fn main() {
         git_executable,
     };
 
-    match do_mirror(&provider, &mirror_dir, opts) {
+    match do_mirror(&provider, &mirror_dir, &opts) {
         Ok(_) => {
             info!("All done");
         }
