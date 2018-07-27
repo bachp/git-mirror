@@ -79,6 +79,10 @@ The project can be built using cargo
 cargo build
 ```
 
+## They're using Git Mirror
+
+* [gitlab-mirror-orchestrator](https://gitlab.ow2.org/ow2/gitlab-mirror-orchestrator) tool at OW2 Consortium.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
