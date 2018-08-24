@@ -7,6 +7,9 @@
 use std::cmp;
 use std::env;
 
+// Make sure OpenSSL finds it's certificates
+extern crate openssl_probe;
+
 // Used for error and debug logging
 #[macro_use]
 extern crate log;
@@ -34,6 +37,7 @@ arg_enum!{
 }
 
 fn main() {
+    // Setup commandline parser
     let m = App::new(crate_name!())
         .author(crate_authors!())
         .version(crate_version!())
@@ -157,6 +161,9 @@ fn main() {
             }
         })
         .ok();
+
+    // Run OpenSSL probing on all platforms even the ones not using it
+    openssl_probe::init_ssl_cert_env_vars();
 
     let provider: Box<Provider> = match value_t_or_exit!(m.value_of("provider"), Providers) {
         Providers::GitLab => Box::new(GitLab {
