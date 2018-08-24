@@ -5,10 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.9.1] - 2018-08-24
 ## Changed
 - Update dependencies
 
-## [0.9.1] - 2018-08-24
 ### Fixed
 - Automatically find OpenSSL certificates by searching in different known paths.
   This can be overriden manually by setting the `SSL_CERT_DIR` and `SSL_CERT_FILE`
