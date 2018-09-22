@@ -36,6 +36,9 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 extern crate chrono;
 use chrono::{Local, Utc};
 
+extern crate junit_report;
+use junit_report::{DateTime, Report, TestCase, TestSuite};
+
 // Monitoring
 #[macro_use]
 extern crate prometheus;
@@ -51,9 +54,9 @@ pub fn mirror_repo(
     destination: &str,
     dry_run: bool,
     git_executable: String,
-) -> Result<u32, String> {
+) -> Result<(), String> {
     if dry_run {
-        return Ok(1);
+        return Ok(());
     }
 
     let origin_dir = Path::new(&mirror_dir).join(slugify(origin));
@@ -79,7 +82,7 @@ pub fn mirror_repo(
 
     git.git_push_mirror(destination, &origin_dir)?;
 
-    Ok(1)
+    Ok(())
 }
 
 fn run_sync_task(
@@ -89,7 +92,7 @@ fn run_sync_task(
     dry_run: bool,
     label: &str,
     git_executable: &str,
-) {
+) -> TestSuite {
     // Give the work to the worker pool
     rayon::ThreadPoolBuilder::new()
         .num_threads(worker_count)
@@ -115,12 +118,14 @@ fn run_sync_task(
     ).unwrap();
 
     let total = v.len();
-    let success = v
+    let mut results = v
         .par_iter()
         .map(|x| {
             proj_total.with_label_values(&[label]).inc();
+            let start: DateTime<Utc> = Utc::now();
             match x {
                 Ok(x) => {
+                    let name = format!("{} -> {}", x.origin, x.destination);
                     let mirror_dir = mirror_dir.to_owned().clone();
                     let proj_fail = proj_fail.clone();
                     let proj_ok = proj_ok.clone();
@@ -128,12 +133,7 @@ fn run_sync_task(
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
                     let git_executable = git_executable.to_string();
-                    println!(
-                        "START [{}]: {} -> {}",
-                        Local::now(),
-                        x.origin,
-                        x.destination
-                    );
+                    println!("START [{}]: {}", Local::now(), name);
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
@@ -144,48 +144,50 @@ fn run_sync_task(
                         dry_run,
                         git_executable,
                     ) {
-                        Ok(c) => {
-                            println!("OK [{}]: {} -> {}", Local::now(), x.origin, x.destination);
+                        Ok(_) => {
+                            println!("OK [{}]: {}", Local::now(), name);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
                             proj_ok.with_label_values(&[&label]).inc();
-                            c
+                            TestCase::success(&name, Utc::now() - start)
                         }
                         Err(e) => {
-                            println!(
-                                "FAIL [{}]: {} -> {} ({})",
-                                Local::now(),
-                                x.origin,
-                                x.destination,
-                                e
-                            );
+                            println!("FAIL [{}]: {} ({})", Local::now(), name, e);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
                             proj_fail.with_label_values(&[&label]).inc();
-                            error!(
-                                "Unable to sync repo {} -> {} ({})",
-                                x.origin, x.destination, e
-                            );
-                            0
+                            error!("Unable to sync repo {} ({})", name, e);
+                            TestCase::error(
+                                &name,
+                                Utc::now() - start,
+                                "sync error",
+                                &format!("{:?}", e),
+                            )
                         }
                     }
                 }
                 Err(e) => {
                     proj_skip.with_label_values(&[label]).inc();
-                    warn!("Skipping: {:?}", e);
-                    0
+                    error!("Error parsing YAML: {:?}", e);
+                    let duration = Utc::now() - start;
+                    TestCase::error("", duration, "parse error", &format!("{:?}", e))
                 }
             }
-        }).sum::<u32>();
+        }).collect::<Vec<TestCase>>();
 
+    let success = results.iter().filter(|ref x| x.is_success()).count();
+    let mut ts = TestSuite::new("Sync Job");
+    ts.add_testcases(&mut results);
     println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
+    ts
 }
 
 pub struct MirrorOptions {
     pub dry_run: bool,
     pub metrics_file: Option<String>,
+    pub junit_file: Option<String>,
     pub worker_count: usize,
     pub git_executable: String,
 }
@@ -234,7 +236,7 @@ pub fn do_mirror(
         .with_label_values(&[&provider.get_label()])
         .set(Utc::now().timestamp() as f64);
 
-    run_sync_task(
+    let ts = run_sync_task(
         &v,
         opts.worker_count,
         mirror_dir,
@@ -252,6 +254,11 @@ pub fn do_mirror(
         None => trace!("Skipping metrics file creation"),
     };
 
+    match opts.junit_file {
+        Some(ref f) => write_junit_report(f, ts),
+        None => trace!("Skipping junit report"),
+    }
+
     Ok(())
 }
 
@@ -260,6 +267,13 @@ fn write_metrics(f: &str) {
     let encoder = TextEncoder::new();
     let metric_familys = prometheus::gather();
     encoder.encode(&metric_familys, &mut file).unwrap();
+}
+
+fn write_junit_report(f: &str, ts: TestSuite) {
+    let mut report = Report::default();
+    report.add_testsuite(ts);
+    let mut file = File::create(f).unwrap();
+    report.write_xml(&mut file).unwrap();
 }
 
 mod git;

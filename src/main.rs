@@ -99,6 +99,11 @@ fn main() {
                      Prometheus nodeexporter's text file colloctor.",
                 ).takes_value(true),
         ).arg(
+            Arg::with_name("junit-report")
+                .long("junit-report")
+                .help("Location where to store the Junit XML report.")
+                .takes_value(true),
+        ).arg(
             Arg::with_name("git-executable")
                 .long("git-executable")
                 .help("Git executable to use.")
@@ -134,6 +139,8 @@ fn main() {
     debug!("Worker count: {}", worker_count);
     let metrics_file = value_t!(m.value_of("metrics-file"), String).ok();
     debug!("Metrics file: {:?}", metrics_file);
+    let junit_file = value_t!(m.value_of("junit-report"), String).ok();
+    debug!("Junit report file: {:?}", junit_file);
     let git_executable = value_t_or_exit!(m.value_of("git-executable"), String);
     debug!("Git executable: {:?}", git_executable);
     let private_token = value_t!(m.value_of("private-token"), String)
@@ -173,6 +180,7 @@ fn main() {
         dry_run,
         worker_count,
         metrics_file,
+        junit_file,
         git_executable,
     };
 
