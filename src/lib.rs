@@ -21,8 +21,6 @@ extern crate slug;
 use self::slug::slugify;
 
 // We need the header! macro from hyper
-#[macro_use]
-extern crate hyper;
 extern crate reqwest;
 
 // Macros for serde
@@ -180,8 +178,7 @@ fn run_sync_task(
                     0
                 }
             }
-        })
-        .sum::<u32>();
+        }).sum::<u32>();
 
     println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
 }

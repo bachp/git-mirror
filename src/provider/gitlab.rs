@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Pascal Bach
+ * Copyright (c) 2017-2018 Pascal Bach
  *
  * SPDX-License-Identifier:     MIT
  */
@@ -10,14 +10,7 @@ use std::u32;
 // Used for error and debug logging
 extern crate log;
 
-// Custom header used to access the gitlab API
-// See: https://docs.gitlab.com/ce/api/#authentication
-header! { (PrivateToken, "PRIVATE-TOKEN") => [String] }
-
-// Custom header to check for pagination
-header! { (XNextPage, "X-Next-Page") => [u32] }
-
-use reqwest::header::Headers;
+use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client, StatusCode};
 
 // Used to serialize JSON and YAML responses from the API
@@ -67,7 +60,7 @@ impl GitLab {
         &self,
         url: &str,
         client: &Client,
-        headers: &Headers,
+        headers: &HeaderMap,
     ) -> Result<Vec<T>, String> {
         let mut results: Vec<T> = Vec::new();
 
@@ -83,8 +76,8 @@ impl GitLab {
 
             debug!("HTTP Status Received: {}", res.status());
 
-            if res.status() != StatusCode::Ok {
-                if res.status() == StatusCode::Unauthorized {
+            if res.status() != StatusCode::OK {
+                if res.status() == StatusCode::UNAUTHORIZED {
                     return Err(format!(
                         "API call received unautorized ({}) for: {}. \
                          Please make sure the `GITLAB_PRIVATE_TOKEN` environment \
@@ -101,14 +94,19 @@ impl GitLab {
                 }
             }
 
-            let has_next = match res.headers().get::<XNextPage>() {
+            let has_next = match res.headers().get("x-next-page") {
                 None => {
-                    trace!("No more pages");
+                    trace!("No more pages, x-next-page header missing.");
                     false
                 }
                 Some(n) => {
-                    trace!("Next page: {}", n);
-                    true
+                    if n.is_empty() {
+                        trace!("No more pages, x-next-page-header empty.");
+                        false
+                    } else {
+                        trace!("Next page: {:?}", n);
+                        true
+                    }
                 }
             };
 
@@ -128,7 +126,7 @@ impl GitLab {
         &self,
         id: &str,
         client: &Client,
-        headers: &Headers,
+        headers: &HeaderMap,
     ) -> Result<Vec<Project>, String> {
         let url = format!("{}/api/v4/groups/{}/projects", self.url, id);
 
@@ -139,7 +137,7 @@ impl GitLab {
         &self,
         id: &str,
         client: &Client,
-        headers: &Headers,
+        headers: &HeaderMap,
     ) -> Result<Vec<String>, String> {
         let url = format!("{}/api/v4/groups/{}/subgroups", self.url, id);
 
@@ -165,12 +163,18 @@ impl Provider for GitLab {
 
         let use_http = self.use_http;
 
-        let mut headers = Headers::new();
-        match self.private_token.clone() {
-            Some(token) => {
-                headers.set(PrivateToken(token));
+        let mut headers = HeaderMap::new();
+        if let Some(ref token) = self.private_token {
+            match HeaderValue::from_str(&token) {
+                Ok(token) => {
+                    headers.insert("PRIVATE-TOKEN", token);
+                }
+                Err(err) => {
+                    error!("Unable to parse PRIVATE_TOKEN: {}", err);
+                }
             }
-            None => warn!("GITLAB_PRIVATE_TOKEN not set"),
+        } else {
+            warn!("PRIVATE_TOKEN not set")
         }
 
         let groups = if self.recursive {

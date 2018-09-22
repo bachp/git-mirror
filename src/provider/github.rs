@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Pascal Bach
+ * Copyright (c) 2017-2018 Pascal Bach
  *
  * SPDX-License-Identifier:     MIT
  */
@@ -8,7 +8,7 @@
 extern crate log;
 
 // Used for github API access via HTTPS
-use reqwest::header::{qitem, Accept, Headers, UserAgent};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
 use reqwest::{Client, StatusCode};
 
 // Used to serialize JSON and YAML responses from the API
@@ -53,13 +53,13 @@ impl Provider for GitHub {
 
         let use_http = self.use_http;
 
-        let mut headers = Headers::new();
+        let mut headers = HeaderMap::new();
         // Github rejects requests without user agent
-        headers.set(UserAgent::new(self.useragent.to_owned()));
+        let useragent = HeaderValue::from_str(&self.useragent).expect("User agent invalid!");
+        headers.insert(USER_AGENT, useragent);
         // Set the accept header to make sure the v3 api is used
-        headers.set(Accept(vec![qitem(
-            "application/vnd.github.v3+json".parse().unwrap(),
-        )]));
+        let accept = HeaderValue::from_static("application/vnd.github.v3+json");
+        headers.insert(ACCEPT, accept);
 
         let url = format!("{}/orgs/{}/repos", self.url, self.org);
         trace!("URL: {}", url);
@@ -70,8 +70,8 @@ impl Provider for GitHub {
             .send()
             .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
 
-        if res.status() != StatusCode::Ok {
-            if res.status() == StatusCode::Unauthorized {
+        if res.status() != StatusCode::OK {
+            if res.status() == StatusCode::UNAUTHORIZED {
                 return Err(format!(
                     "API call received unautorized ({}) for: {}. \
                      Please make sure the `GITHUB_PRIVATE_TOKEN` environment \
@@ -101,11 +101,7 @@ impl Provider for GitHub {
                         continue;
                     }
                     trace!("{0} -> {1}", desc.origin, p.ssh_url);
-                    let destination = if use_http {
-                        p.clone_url
-                    } else {
-                        p.ssh_url
-                    };
+                    let destination = if use_http { p.clone_url } else { p.ssh_url };
                     let m = Mirror {
                         origin: desc.origin,
                         destination,

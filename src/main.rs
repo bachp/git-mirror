@@ -49,8 +49,7 @@ fn main() {
                 .takes_value(true)
                 .possible_values(&Providers::variants())
                 .default_value("GitLab"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("url")
                 .short("u")
                 .long("url")
@@ -59,70 +58,59 @@ fn main() {
                     ("provider", Some("GitLab"), "https://gitlab.com"),
                     ("provider", Some("GitHub"), "https://api.github.com"),
                 ]),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("group")
                 .short("g")
                 .long("group")
                 .help("Name of the group to check for repositories to sync")
                 .takes_value(true)
                 .required(true),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("mirror-dir")
                 .short("m")
                 .long("mirror-dir")
                 .help("Directory where the local clones are stored")
                 .takes_value(true)
                 .default_value("./mirror-dir"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("v")
                 .short("v")
                 .multiple(true)
                 .help("Verbosity level"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("http")
                 .long("https")
                 .help("Use http(s) instead of SSH to sync the GitLab repository"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("dry-run")
                 .long("dry-run")
                 .help("Only print what to do without actually running any git commands."),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("worker-count")
                 .short("c")
                 .long("worker-count")
                 .help("Number of concurrent mirror jobs")
                 .default_value("1"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("metrics-file")
                 .long("metrics-file")
                 .help(
                     "Location where to store metrics for consumption by \
                      Prometheus nodeexporter's text file colloctor.",
-                )
-                .takes_value(true),
-        )
-        .arg(
+                ).takes_value(true),
+        ).arg(
             Arg::with_name("git-executable")
                 .long("git-executable")
                 .help("Git executable to use.")
                 .takes_value(true)
                 .default_value("git"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("private-token")
                 .long("private-token")
                 .help("Private token or Personal access token to access the GitLab or GitHub API")
                 .env("PRIVATE_TOKEN")
                 .takes_value(true),
-        )
-        .get_matches();
+        ).get_matches();
 
     stderrlog::new()
         .module(module_path!())
@@ -159,8 +147,7 @@ fn main() {
                 // Not token set, just return an empty error
                 Err(())
             }
-        })
-        .ok();
+        }).ok();
 
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();
