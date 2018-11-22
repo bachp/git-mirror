@@ -5,12 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.10.0] - 2018-11-22
 ## Added
 - Add parameter to sumarize the results in a JUnit XML compatible format. This format
 can be parsed by many reporting tools, including Gitlab CI and Jenkins.
 
 ## Changed
 - Update to reqwest 0.9. This makes git-mirror compatible with OpenSSL 1.1.1.
+- Update dependencies
 
 ## [0.9.1] - 2018-08-24
 ## Changed
