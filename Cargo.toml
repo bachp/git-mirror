@@ -2,6 +2,10 @@
 name = "git-mirror"
 version = "0.10.0"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
+description = "Sync between different git repositories."
+license = "MIT"
+repository = "https://github.com/bachp/git-mirror"
+keywords = ["git", "mirror", "sync"]
 
 [features]
 
