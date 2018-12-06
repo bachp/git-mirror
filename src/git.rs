@@ -8,6 +8,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::result;
 
+use log::debug;
+
 type Result = result::Result<(), String>;
 
 pub trait GitWrapper {

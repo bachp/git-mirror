@@ -8,17 +8,12 @@
 use std::u32;
 
 // Used for error and debug logging
-extern crate log;
+use log::{debug, error, trace, warn};
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client, StatusCode};
 
-// Used to serialize JSON and YAML responses from the API
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
-use provider::{Mirror, MirrorError, MirrorResult, Provider};
+use crate::provider::{Mirror, MirrorError, MirrorResult, Provider};
 
 #[derive(Debug)]
 pub struct GitLab {

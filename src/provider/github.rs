@@ -5,18 +5,13 @@
  */
 
 // Used for error and debug logging
-extern crate log;
+use log::trace;
 
 // Used for github API access via HTTPS
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
 use reqwest::{Client, StatusCode};
 
-// Used to serialize JSON and YAML responses from the API
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
-use provider::{Mirror, MirrorError, MirrorResult, Provider};
+use crate::provider::{Mirror, MirrorError, MirrorResult, Provider};
 
 pub struct GitHub {
     pub url: String,

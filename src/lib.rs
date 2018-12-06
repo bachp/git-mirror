@@ -9,44 +9,38 @@ use std::fs::File;
 use std::path::Path;
 
 // File locking
-extern crate fs2;
 use fs2::FileExt;
 
 // Used for error and debug logging
-#[macro_use]
-extern crate log;
+use log::{debug, error, info, trace};
 
 // Used to create sane local directory names
-extern crate slug;
-use self::slug::slugify;
+use slug::slugify;
 
 // We need the header! macro from hyper
-extern crate reqwest;
+use reqwest;
 
 // Macros for serde
 #[macro_use]
 extern crate serde_derive;
 
 // Used to allow multiple paralell sync tasks
-extern crate rayon;
-
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
-extern crate chrono;
 use chrono::{Local, Utc};
 
-extern crate junit_report;
 use junit_report::{DateTime, Report, TestCase, TestSuite};
 
-// Monitoring
-#[macro_use]
-extern crate prometheus;
+// Monitoring;
 use prometheus::{Encoder, TextEncoder};
+use prometheus::{
+    __register_counter_vec, __register_gauge_vec, opts, register_counter_vec, register_gauge_vec,
+};
 
-use provider::{MirrorResult, Provider};
+use crate::provider::{MirrorResult, Provider};
 
-use git::{Git, GitWrapper};
+use crate::git::{Git, GitWrapper};
 
 pub fn mirror_repo(
     mirror_dir: &str,
@@ -110,12 +104,14 @@ fn run_sync_task(
         "git_mirror_project_start",
         "Start of project mirror as unix timestamp",
         &["origin", "destination", "mirror"]
-    ).unwrap();
+    )
+    .unwrap();
     let proj_end = register_gauge_vec!(
         "git_mirror_project_end",
         "End of projeect mirror as unix timestamp",
         &["origin", "destination", "mirror"]
-    ).unwrap();
+    )
+    .unwrap();
 
     let total = v.len();
     let mut results = v
@@ -175,7 +171,8 @@ fn run_sync_task(
                     TestCase::error("", duration, "parse error", &format!("{:?}", e))
                 }
             }
-        }).collect::<Vec<TestCase>>();
+        })
+        .collect::<Vec<TestCase>>();
 
     let success = results.iter().filter(|ref x| x.is_success()).count();
     let mut ts = TestSuite::new("Sync Job");
@@ -201,12 +198,14 @@ pub fn do_mirror(
         "git_mirror_start_time",
         "Start time of the sync as unix timestamp",
         &["mirror"]
-    ).unwrap();
+    )
+    .unwrap();
     let end_time = register_gauge_vec!(
         "git_mirror_end_time",
         "End time of the sync as unix timestamp",
         &["mirror"]
-    ).unwrap();
+    )
+    .unwrap();
 
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", mirror_dir);

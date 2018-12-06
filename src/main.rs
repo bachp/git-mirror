@@ -7,28 +7,23 @@
 use std::cmp;
 use std::env;
 
-// Make sure OpenSSL finds it's certificates
-extern crate openssl_probe;
-
 // Used for error and debug logging
-#[macro_use]
-extern crate log;
-extern crate stderrlog;
+use log::{debug, error, info, warn};
 
 // Used to do command line parsing
-#[macro_use]
-extern crate clap;
 use clap::{App, Arg};
+use clap::{
+    _clap_count_exprs, arg_enum, crate_authors, crate_name, crate_version, value_t, value_t_or_exit,
+};
 
 // Load the real functionality
-extern crate git_mirror;
 use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
 use git_mirror::MirrorOptions;
 
 use std::process::exit;
 
-arg_enum!{
+arg_enum! {
     #[derive(Debug)]
     enum Providers {
       GitLab,
@@ -49,7 +44,8 @@ fn main() {
                 .takes_value(true)
                 .possible_values(&Providers::variants())
                 .default_value("GitLab"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("url")
                 .short("u")
                 .long("url")
@@ -58,64 +54,76 @@ fn main() {
                     ("provider", Some("GitLab"), "https://gitlab.com"),
                     ("provider", Some("GitHub"), "https://api.github.com"),
                 ]),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("group")
                 .short("g")
                 .long("group")
                 .help("Name of the group to check for repositories to sync")
                 .takes_value(true)
                 .required(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("mirror-dir")
                 .short("m")
                 .long("mirror-dir")
                 .help("Directory where the local clones are stored")
                 .takes_value(true)
                 .default_value("./mirror-dir"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("v")
                 .short("v")
                 .multiple(true)
                 .help("Verbosity level"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("http")
                 .long("https")
                 .help("Use http(s) instead of SSH to sync the GitLab repository"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("dry-run")
                 .long("dry-run")
                 .help("Only print what to do without actually running any git commands."),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("worker-count")
                 .short("c")
                 .long("worker-count")
                 .help("Number of concurrent mirror jobs")
                 .default_value("1"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("metrics-file")
                 .long("metrics-file")
                 .help(
                     "Location where to store metrics for consumption by \
                      Prometheus nodeexporter's text file colloctor.",
-                ).takes_value(true),
-        ).arg(
+                )
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("junit-report")
                 .long("junit-report")
                 .help("Location where to store the Junit XML report.")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("git-executable")
                 .long("git-executable")
                 .help("Git executable to use.")
                 .takes_value(true)
                 .default_value("git"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("private-token")
                 .long("private-token")
                 .help("Private token or Personal access token to access the GitLab or GitHub API")
                 .env("PRIVATE_TOKEN")
                 .takes_value(true),
-        ).get_matches();
+        )
+        .get_matches();
 
     stderrlog::new()
         .module(module_path!())
@@ -154,7 +162,8 @@ fn main() {
                 // Not token set, just return an empty error
                 Err(())
             }
-        }).ok();
+        })
+        .ok();
 
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();

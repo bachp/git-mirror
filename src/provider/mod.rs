@@ -4,8 +4,6 @@
  * SPDX-License-Identifier:     MIT
  */
 
-extern crate serde_yaml;
-
 /// A representation of a mirror job from orgin to destination
 #[derive(Debug)]
 pub struct Mirror {
