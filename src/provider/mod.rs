@@ -9,6 +9,7 @@
 pub struct Mirror {
     pub origin: String,
     pub destination: String,
+    pub flat: bool,
 }
 
 /// An error occuring during mirror creation
@@ -26,6 +27,8 @@ struct Desc {
     origin: String,
     #[serde(default)]
     skip: bool,
+    #[serde(default)]
+    flat: bool,
 }
 
 pub trait Provider {

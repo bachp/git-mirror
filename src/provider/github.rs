@@ -27,6 +27,7 @@ struct Desc {
     origin: String,
     #[serde(default)]
     skip: bool,
+    flat: bool,
 }
 
 /// A project from the GitLab API
@@ -89,17 +90,22 @@ impl Provider for GitHub {
         let mut mirrors: Vec<MirrorResult> = Vec::new();
 
         for p in projects {
+            let mut flat = false;
             match serde_yaml::from_str::<Desc>(&p.description.unwrap_or_default()) {
                 Ok(desc) => {
                     if desc.skip {
                         mirrors.push(Err(MirrorError::Skip(p.url)));
                         continue;
                     }
+                    if desc.flat {
+                        flat = true;
+                    }
                     trace!("{0} -> {1}", desc.origin, p.ssh_url);
                     let destination = if use_http { p.clone_url } else { p.ssh_url };
                     let m = Mirror {
                         origin: desc.origin,
                         destination,
+                        flat: flat,
                     };
                     mirrors.push(Ok(m));
                 }

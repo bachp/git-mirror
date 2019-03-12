@@ -48,12 +48,17 @@ pub fn mirror_repo(
     destination: &str,
     dry_run: bool,
     git_executable: String,
+    flat: bool,
 ) -> Result<(), String> {
     if dry_run {
         return Ok(());
     }
 
-    let origin_dir = Path::new(&mirror_dir).join(slugify(origin));
+    let mut new_origin: String = String::from(origin);
+    if flat {
+        new_origin.push_str("flat");
+    } 
+    let origin_dir = Path::new(&mirror_dir).join(slugify(new_origin.as_str()));
     debug!("Using origin dir: {0:?}", origin_dir);
 
     let git = Git::new(git_executable);
@@ -63,18 +68,18 @@ pub fn mirror_repo(
     if origin_dir.is_dir() {
         info!("Local Update for {}", origin);
 
-        git.git_update_mirror(origin, &origin_dir)?;
+        git.git_update_mirror(origin, &origin_dir, flat)?;
     } else if !origin_dir.exists() {
         info!("Local Checkout for {}", origin);
 
-        git.git_clone_mirror(origin, &origin_dir)?;
+        git.git_clone_mirror(origin, &origin_dir, flat)?;
     } else {
         return Err(format!("Local origin dir is a file: {:?}", origin_dir));
     }
 
     info!("Push to destination {}", destination);
 
-    git.git_push_mirror(destination, &origin_dir)?;
+    git.git_push_mirror(destination, &origin_dir, flat)?;
 
     Ok(())
 }
@@ -139,6 +144,7 @@ fn run_sync_task(
                         &x.destination,
                         dry_run,
                         git_executable,
+                        x.flat,
                     ) {
                         Ok(_) => {
                             println!("OK [{}]: {}", Local::now(), name);
