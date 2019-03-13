@@ -45,6 +45,7 @@ A list of currently supported fields
 - `origin` Source repository to mirror from
 - `skip`   Temporarily exclude a project from syncing by adding `skip: true`
 - `destination` Reserved for future use
+- `flat` Clone repo only flat. Creates shallow clone and pushes only latest commit. Add `flat: true` to use it
 
 Any other fields are ignored
 

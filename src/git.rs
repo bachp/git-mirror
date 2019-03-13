@@ -40,7 +40,6 @@ impl Git {
         match cmd.output() {
             Ok(o) => {
                 let stdout = String::from_utf8_lossy(&o.stdout).to_string();
-                println!("{}", &stdout);
                 if !stdout.is_empty() {
                     debug!("Stdout: {}", stdout);
                 }

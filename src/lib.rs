@@ -56,8 +56,8 @@ pub fn mirror_repo(
 
     let mut new_origin: String = String::from(origin);
     if flat {
-        new_origin.push_str("flat");
-    } 
+        new_origin.push_str("-flat");
+    }
     let origin_dir = Path::new(&mirror_dir).join(slugify(new_origin.as_str()));
     debug!("Using origin dir: {0:?}", origin_dir);
 
