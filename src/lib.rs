@@ -17,9 +17,6 @@ use log::{debug, error, info, trace};
 // Used to create sane local directory names
 use slug::slugify;
 
-// We need the header! macro from hyper
-use reqwest;
-
 // Macros for serde
 #[macro_use]
 extern crate serde_derive;
