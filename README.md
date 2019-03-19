@@ -45,6 +45,13 @@ A list of currently supported fields
 - `origin` Source repository to mirror from
 - `skip`   Temporarily exclude a project from syncing by adding `skip: true`
 - `destination` Reserved for future use
+- `refspec` Push only refspec. 
+  Add the refspec list to use it. Any valid refspec is possible.
+  E.g.
+  ```yaml
+  refspec: ["master", "2.0", "+refs/tags/*:refs/tags/*"]
+  ```
+  See also https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 
 Any other fields are ignored
 

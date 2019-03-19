@@ -16,7 +16,12 @@ pub trait GitWrapper {
     fn git_version(&self) -> Result;
     fn git_clone_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result;
     fn git_update_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result;
-    fn git_push_mirror(&self, dest: &str, repo_dir: &PathBuf) -> Result;
+    fn git_push_mirror(
+        &self,
+        dest: &str,
+        repo_dir: &PathBuf,
+        refspec: &Option<Vec<String>>,
+    ) -> Result;
 }
 
 pub struct Git {
@@ -97,13 +102,23 @@ impl GitWrapper for Git {
         self.run_cmd(remote_update_cmd)
     }
 
-    fn git_push_mirror(&self, dest: &str, repo_dir: &PathBuf) -> Result {
+    fn git_push_mirror(
+        &self,
+        dest: &str,
+        repo_dir: &PathBuf,
+        refspec: &Option<Vec<String>>,
+    ) -> Result {
         let mut push_cmd = self.git_base_cmd();
-        push_cmd
-            .current_dir(repo_dir)
-            .args(&["push", "--mirror"])
-            .arg(dest);
-
+        push_cmd.current_dir(repo_dir);
+        push_cmd.arg("push");
+        if let Some(r) = &refspec {
+            push_cmd.arg(dest);
+            for spec in r.iter() {
+                push_cmd.arg(&spec);
+            }
+        } else {
+            push_cmd.args(&["--mirror", dest]);
+        }
         self.run_cmd(push_cmd)
     }
 }

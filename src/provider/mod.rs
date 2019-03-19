@@ -9,6 +9,7 @@
 pub struct Mirror {
     pub origin: String,
     pub destination: String,
+    pub refspec: Option<Vec<String>>,
 }
 
 /// An error occuring during mirror creation
@@ -26,6 +27,7 @@ struct Desc {
     origin: String,
     #[serde(default)]
     skip: bool,
+    refspec: Option<Vec<String>>,
 }
 
 pub trait Provider {

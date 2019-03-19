@@ -48,6 +48,7 @@ pub fn mirror_repo(
     destination: &str,
     dry_run: bool,
     git_executable: String,
+    refspec: &Option<Vec<String>>,
 ) -> Result<(), String> {
     if dry_run {
         return Ok(());
@@ -74,7 +75,7 @@ pub fn mirror_repo(
 
     info!("Push to destination {}", destination);
 
-    git.git_push_mirror(destination, &origin_dir)?;
+    git.git_push_mirror(destination, &origin_dir, refspec)?;
 
     Ok(())
 }
@@ -108,7 +109,7 @@ fn run_sync_task(
     .unwrap();
     let proj_end = register_gauge_vec!(
         "git_mirror_project_end",
-        "End of projeect mirror as unix timestamp",
+        "End of project mirror as unix timestamp",
         &["origin", "destination", "mirror"]
     )
     .unwrap();
@@ -139,6 +140,7 @@ fn run_sync_task(
                         &x.destination,
                         dry_run,
                         git_executable,
+                        &x.refspec,
                     ) {
                         Ok(_) => {
                             println!("OK [{}]: {}", Local::now(), name);

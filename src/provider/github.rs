@@ -27,6 +27,7 @@ struct Desc {
     origin: String,
     #[serde(default)]
     skip: bool,
+    refspec: Option<Vec<String>>,
 }
 
 /// A project from the GitLab API
@@ -100,6 +101,7 @@ impl Provider for GitHub {
                     let m = Mirror {
                         origin: desc.origin,
                         destination,
+                        refspec: desc.refspec,
                     };
                     mirrors.push(Ok(m));
                 }
