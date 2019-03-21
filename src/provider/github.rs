@@ -11,7 +11,7 @@ use log::trace;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
 use reqwest::{Client, StatusCode};
 
-use crate::provider::{Mirror, MirrorError, MirrorResult, Provider};
+use crate::provider::{Desc, Mirror, MirrorError, MirrorResult, Provider};
 
 pub struct GitHub {
     pub url: String,
@@ -19,15 +19,6 @@ pub struct GitHub {
     pub use_http: bool,
     pub private_token: Option<String>,
     pub useragent: String,
-}
-
-/// A structured description
-#[derive(Deserialize, Debug)]
-struct Desc {
-    origin: String,
-    #[serde(default)]
-    skip: bool,
-    refspec: Option<Vec<String>>,
 }
 
 /// A project from the GitLab API

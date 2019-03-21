@@ -13,7 +13,7 @@ use log::{debug, error, trace, warn};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Client, StatusCode};
 
-use crate::provider::{Mirror, MirrorError, MirrorResult, Provider};
+use crate::provider::{Desc, Mirror, MirrorError, MirrorResult, Provider};
 
 #[derive(Debug)]
 pub struct GitLab {
@@ -22,15 +22,6 @@ pub struct GitLab {
     pub use_http: bool,
     pub private_token: Option<String>,
     pub recursive: bool,
-}
-
-/// A structured description
-#[derive(Deserialize, Debug)]
-struct Desc {
-    origin: String,
-    #[serde(default)]
-    skip: bool,
-    refspec: Option<Vec<String>>,
 }
 
 /// A project from the GitLab API
