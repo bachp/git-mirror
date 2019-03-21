@@ -189,7 +189,7 @@ pub struct MirrorOptions {
 }
 
 pub fn do_mirror(
-    provider: &Box<Provider>,
+    provider: Box<Provider>,
     mirror_dir: &str,
     opts: &MirrorOptions,
 ) -> Result<(), String> {
