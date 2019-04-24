@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Better progress reporting by adding index and total in START and END messages
+
 ## [0.12.0] - 2019-04-24
 
 ### Added

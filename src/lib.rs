@@ -22,7 +22,7 @@ use slug::slugify;
 extern crate serde_derive;
 
 // Used to allow multiple paralell sync tasks
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
 use chrono::{Local, Utc};
@@ -115,7 +115,8 @@ fn run_sync_task(
     let total = v.len();
     let mut results = v
         .par_iter()
-        .map(|x| {
+        .enumerate()
+        .map(|(i, x)| {
             proj_total.with_label_values(&[label]).inc();
             let start: DateTime<Utc> = Utc::now();
             match x {
@@ -128,7 +129,7 @@ fn run_sync_task(
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
                     let git_executable = git_executable.to_string();
-                    println!("START [{}]: {}", Local::now(), name);
+                    println!("START {}/{} [{}]: {}", i, total, Local::now(), name);
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
@@ -159,7 +160,7 @@ fn run_sync_task(
                         refspec,
                     ) {
                         Ok(_) => {
-                            println!("END(OK) [{}]: {}", Local::now(), name);
+                            println!("END(OK) {}/{} [{}]: {}", i, total, Local::now(), name);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
@@ -167,7 +168,14 @@ fn run_sync_task(
                             TestCase::success(&name, Utc::now() - start)
                         }
                         Err(e) => {
-                            println!("END(FAIL) [{}]: {} ({})", Local::now(), name, e);
+                            println!(
+                                "END(FAIL) {}/{} [{}]: {} ({})",
+                                i,
+                                total,
+                                Local::now(),
+                                name,
+                                e
+                            );
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
