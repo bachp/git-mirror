@@ -12,10 +12,8 @@ use env_logger::Env;
 use log::{debug, error, info, warn};
 
 // Used to do command line parsing
+use clap::{arg_enum, crate_authors, crate_name, crate_version, value_t, value_t_or_exit};
 use clap::{App, Arg};
-use clap::{
-    _clap_count_exprs, arg_enum, crate_authors, crate_name, crate_version, value_t, value_t_or_exit,
-};
 
 // Load the real functionality
 use git_mirror::do_mirror;
@@ -124,6 +122,13 @@ fn main() {
                 .env("PRIVATE_TOKEN")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("refspec")
+                .long("refspec")
+                .help("Default refspec used to mirror repositories, can be overridden per project.")
+                .multiple(true)
+                .takes_value(true),
+        )
         .get_matches();
 
     let env_log_level = match cmp::min(m.occurrences_of("v") as usize, 4) {
@@ -167,6 +172,9 @@ fn main() {
             }
         })
         .ok();
+    let refspec: Option<Vec<String>> = m
+        .values_of("refspec")
+        .and_then(|v| Some(v.map(|s| s.to_owned()).collect()));
 
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();
@@ -194,6 +202,7 @@ fn main() {
         metrics_file,
         junit_file,
         git_executable,
+        refspec,
     };
 
     match do_mirror(provider, &mirror_dir, &opts) {

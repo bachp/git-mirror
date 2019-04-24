@@ -84,6 +84,7 @@ fn run_sync_task(
     dry_run: bool,
     label: &str,
     git_executable: &str,
+    refspec: &Option<Vec<String>>,
 ) -> TestSuite {
     // Give the work to the worker pool
     rayon::ThreadPoolBuilder::new()
@@ -131,13 +132,31 @@ fn run_sync_task(
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(Utc::now().timestamp() as f64);
+                    let refspec = match &x.refspec {
+                        Some(r) => {
+                            debug!("Using repo specific refspec: {:?}", r);
+                            &x.refspec
+                        }
+                        None => {
+                            match refspec {
+                                Some(r) => {
+                                    debug!("Using global custom refspec: {:?}", r);
+                                }
+                                None => {
+                                    debug!("Using no custom refspec.");
+                                }
+                            }
+                            refspec
+                        }
+                    };
+                    trace!("Refspec used: {:?}", refspec);
                     match mirror_repo(
                         &mirror_dir,
                         &x.origin,
                         &x.destination,
                         dry_run,
                         git_executable,
-                        &x.refspec,
+                        refspec,
                     ) {
                         Ok(_) => {
                             println!("END(OK) [{}]: {}", Local::now(), name);
@@ -186,6 +205,7 @@ pub struct MirrorOptions {
     pub junit_file: Option<String>,
     pub worker_count: usize,
     pub git_executable: String,
+    pub refspec: Option<Vec<String>>,
 }
 
 pub fn do_mirror(
@@ -241,6 +261,7 @@ pub fn do_mirror(
         opts.dry_run,
         &provider.get_label(),
         &opts.git_executable,
+        &opts.refspec,
     );
 
     end_time
