@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.0] - 2019-04-24
+
 ### Added
 - Allow logging to be configured via the `RUST_LOG` variable of  [`env_logger`](https://crates.io/crates/env_logger)
 - Add posibility to set the global default `refspec` via command line argument `--refspec`. This will be used if no repo specific
