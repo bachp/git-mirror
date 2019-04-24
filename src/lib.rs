@@ -140,7 +140,7 @@ fn run_sync_task(
                         &x.refspec,
                     ) {
                         Ok(_) => {
-                            println!("OK [{}]: {}", Local::now(), name);
+                            println!("END(OK) [{}]: {}", Local::now(), name);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
@@ -148,7 +148,7 @@ fn run_sync_task(
                             TestCase::success(&name, Utc::now() - start)
                         }
                         Err(e) => {
-                            println!("FAIL [{}]: {} ({})", Local::now(), name, e);
+                            println!("END(FAIL) [{}]: {} ({})", Local::now(), name, e);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
