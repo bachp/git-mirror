@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Allow logging to be configured via the `RUST_LOG` variable of  [`env_logger`](https://crates.io/crates/env_logger)
+- Add posibility to set the global default `refspec` via command line argument `--refspec`. This will be used if no repo specific
+  refspec is given.
+
+### Changed
+- Change job end marker from `OK` -> `END(OK)` and `FAIL` -> `END(FAIL)`. This allows easier parsing.
+
 ## [0.11.0] - 2019-03-20
 ### Added
 - Allow specifying a `refspec` for things to push to the destination path.
