@@ -8,6 +8,7 @@ use std::cmp;
 use std::env;
 
 // Used for error and debug logging
+use env_logger::Env;
 use log::{debug, error, info, warn};
 
 // Used to do command line parsing
@@ -125,12 +126,14 @@ fn main() {
         )
         .get_matches();
 
-    stderrlog::new()
-        .module(module_path!())
-        .timestamp(stderrlog::Timestamp::Second)
-        .verbosity(cmp::min(m.occurrences_of("v") as usize, 4))
-        .init()
-        .unwrap();
+    let env_log_level = match cmp::min(m.occurrences_of("v") as usize, 4) {
+        4 => "git_mirror=trace",
+        3 => "git_mirror=debug",
+        2 => "git_mirror=info",
+        1 => "git_mirror=warn",
+        _ => "git_mirror=error",
+    };
+    env_logger::from_env(Env::default().default_filter_or(env_log_level)).init();
 
     // Make sense of the arguments
     let mirror_dir = value_t_or_exit!(m.value_of("mirror-dir"), String);

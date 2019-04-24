@@ -11,10 +11,10 @@ edition = "2018"
 [features]
 
 [dependencies]
-clap = "2.32"
+clap = "2.33"
 chrono = "0.4"
 log = "0.4"
-stderrlog = "0.4"
+env_logger = "0.6"
 slug = "0.1"
 rayon = "1.0"
 serde = "1.0"
