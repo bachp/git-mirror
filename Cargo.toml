@@ -25,7 +25,7 @@ fs2 = "0.4"
 prometheus = "0.7"
 reqwest = "0.9"
 openssl-probe = "0.1"
-junit-report = "0.1"
+junit-report = "0.2"
 
 [profile.release]
 lto = true

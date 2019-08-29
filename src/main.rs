@@ -179,7 +179,7 @@ fn main() {
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();
 
-    let provider: Box<Provider> = match value_t_or_exit!(m.value_of("provider"), Providers) {
+    let provider: Box<dyn Provider> = match value_t_or_exit!(m.value_of("provider"), Providers) {
         Providers::GitLab => Box::new(GitLab {
             url: gitlab_url.to_owned(),
             group: mirror_group.to_owned(),

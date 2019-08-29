@@ -113,7 +113,7 @@ fn run_sync_task(
     .unwrap();
 
     let total = v.len();
-    let mut results = v
+    let results = v
         .par_iter()
         .enumerate()
         .map(|(i, x)| {
@@ -202,7 +202,7 @@ fn run_sync_task(
 
     let success = results.iter().filter(|ref x| x.is_success()).count();
     let mut ts = TestSuite::new("Sync Job");
-    ts.add_testcases(&mut results);
+    ts.add_testcases(results);
     println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
     ts
 }
@@ -217,7 +217,7 @@ pub struct MirrorOptions {
 }
 
 pub fn do_mirror(
-    provider: Box<Provider>,
+    provider: Box<dyn Provider>,
     mirror_dir: &str,
     opts: &MirrorOptions,
 ) -> Result<(), String> {
