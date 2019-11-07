@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Removed
+- The deprecated `GITLAB_PRIVATE_TOKEN` is not longer recognized. Use `PRIVATE_TOKEN` instead.
+
+### Changed
+- Commandline parsing changed from clap to structopt.
+
 ## [0.13.1] - 2019-10-19
 
 ### Changed

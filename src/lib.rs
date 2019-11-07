@@ -7,6 +7,7 @@
 use std::fs;
 use std::fs::File;
 use std::path::Path;
+use std::path::PathBuf;
 
 // File locking
 use fs2::FileExt;
@@ -40,7 +41,7 @@ use crate::provider::{MirrorResult, Provider};
 use crate::git::{Git, GitWrapper};
 
 pub fn mirror_repo(
-    mirror_dir: &str,
+    mirror_dir: &Path,
     origin: &str,
     destination: &str,
     dry_run: bool,
@@ -80,7 +81,7 @@ pub fn mirror_repo(
 fn run_sync_task(
     v: &[MirrorResult],
     worker_count: usize,
-    mirror_dir: &str,
+    mirror_dir: &Path,
     dry_run: bool,
     label: &str,
     git_executable: &str,
@@ -208,19 +209,16 @@ fn run_sync_task(
 }
 
 pub struct MirrorOptions {
+    pub mirror_dir: PathBuf,
     pub dry_run: bool,
-    pub metrics_file: Option<String>,
-    pub junit_file: Option<String>,
+    pub metrics_file: Option<PathBuf>,
+    pub junit_file: Option<PathBuf>,
     pub worker_count: usize,
     pub git_executable: String,
     pub refspec: Option<Vec<String>>,
 }
 
-pub fn do_mirror(
-    provider: Box<dyn Provider>,
-    mirror_dir: &str,
-    opts: &MirrorOptions,
-) -> Result<(), String> {
+pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<(), String> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
         "Start time of the sync as unix timestamp",
@@ -235,19 +233,23 @@ pub fn do_mirror(
     .unwrap();
 
     // Make sure the mirror directory exists
-    trace!("Create mirror directory at {:?}", mirror_dir);
-    fs::create_dir_all(&mirror_dir)
-        .map_err(|e| format!("Unable to create mirror dir: {:?} ({})", &mirror_dir, e))?;
+    trace!("Create mirror directory at {:?}", opts.mirror_dir);
+    fs::create_dir_all(&opts.mirror_dir).map_err(|e| {
+        format!(
+            "Unable to create mirror dir: {:?} ({})",
+            &opts.mirror_dir, e
+        )
+    })?;
 
     // Check that only one instance is running against a mirror directory
-    let lockfile_path = Path::new(mirror_dir).join("git-mirror.lock");
+    let lockfile_path = opts.mirror_dir.join("git-mirror.lock");
     let lockfile = fs::File::create(&lockfile_path)
         .map_err(|e| format!("Unable to open lockfile: {:?} ({})", &lockfile_path, e))?;
 
     lockfile.try_lock_exclusive().map_err(|e| {
         format!(
             "Another instance is already running against the same mirror directory: {:?} ({})",
-            &mirror_dir, e
+            &opts.mirror_dir, e
         )
     })?;
 
@@ -265,7 +267,7 @@ pub fn do_mirror(
     let ts = run_sync_task(
         &v,
         opts.worker_count,
-        mirror_dir,
+        &opts.mirror_dir,
         opts.dry_run,
         &provider.get_label(),
         &opts.git_executable,
@@ -289,14 +291,14 @@ pub fn do_mirror(
     Ok(())
 }
 
-fn write_metrics(f: &str) {
+fn write_metrics(f: &Path) {
     let mut file = File::create(f).unwrap();
     let encoder = TextEncoder::new();
     let metric_familys = prometheus::gather();
     encoder.encode(&metric_familys, &mut file).unwrap();
 }
 
-fn write_junit_report(f: &str, ts: TestSuite) {
+fn write_junit_report(f: &Path, ts: TestSuite) {
     let mut report = Report::default();
     report.add_testsuite(ts);
     let mut file = File::create(f).unwrap();
