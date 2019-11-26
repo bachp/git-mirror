@@ -33,7 +33,7 @@ use junit_report::{DateTime, Report, TestCase, TestSuite};
 // Monitoring;
 use prometheus::{Encoder, TextEncoder};
 use prometheus::{
-    __register_counter_vec, __register_gauge_vec, opts, register_counter_vec, register_gauge_vec,
+    __register_gauge_vec, opts, register_gauge_vec,
 };
 
 use crate::provider::{MirrorResult, Provider};
@@ -94,12 +94,12 @@ fn run_sync_task(
         .unwrap();
 
     let proj_total =
-        register_counter_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
+        register_gauge_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
     let proj_skip =
-        register_counter_vec!("git_mirror_skip", "Skipped projects", &["mirror"]).unwrap();
+        register_gauge_vec!("git_mirror_skip", "Skipped projects", &["mirror"]).unwrap();
     let proj_fail =
-        register_counter_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
-    let proj_ok = register_counter_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
+        register_gauge_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
+    let proj_ok = register_gauge_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
     let proj_start = register_gauge_vec!(
         "git_mirror_project_start",
         "Start of project mirror as unix timestamp",
