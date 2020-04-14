@@ -31,10 +31,8 @@ use chrono::{Local, Utc};
 use junit_report::{DateTime, Report, TestCase, TestSuite};
 
 // Monitoring;
+use prometheus::register_gauge_vec;
 use prometheus::{Encoder, TextEncoder};
-use prometheus::{
-    __register_gauge_vec, opts, register_gauge_vec,
-};
 
 use crate::provider::{MirrorResult, Provider};
 
@@ -97,8 +95,7 @@ fn run_sync_task(
         register_gauge_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
     let proj_skip =
         register_gauge_vec!("git_mirror_skip", "Skipped projects", &["mirror"]).unwrap();
-    let proj_fail =
-        register_gauge_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
+    let proj_fail = register_gauge_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
     let proj_ok = register_gauge_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
     let proj_start = register_gauge_vec!(
         "git_mirror_project_start",
@@ -123,7 +120,7 @@ fn run_sync_task(
             match x {
                 Ok(x) => {
                     let name = format!("{} -> {}", x.origin, x.destination);
-                    let mirror_dir = mirror_dir.to_owned().clone();
+                    let mirror_dir = mirror_dir.to_owned();
                     let proj_fail = proj_fail.clone();
                     let proj_ok = proj_ok.clone();
                     let proj_start = proj_start.clone();
