@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "git-mirror"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "chrono 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
