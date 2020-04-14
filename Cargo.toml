@@ -27,6 +27,7 @@ reqwest = "0.9"
 openssl-probe = "0.1"
 junit-report = "0.2"
 structopt = "0.3"
+openssl-sys = "0.9.55"
 
 [profile.release]
 lto = true
