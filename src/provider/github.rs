@@ -8,8 +8,9 @@
 use log::trace;
 
 // Used for github API access via HTTPS
+use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
-use reqwest::{Client, StatusCode};
+use reqwest::StatusCode;
 
 use crate::provider::{Desc, Mirror, MirrorError, MirrorResult, Provider};
 

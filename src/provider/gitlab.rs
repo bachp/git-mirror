@@ -10,8 +10,9 @@ use std::u32;
 // Used for error and debug logging
 use log::{debug, error, trace, warn};
 
+use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
-use reqwest::{Client, StatusCode};
+use reqwest::StatusCode;
 
 use crate::provider::{Desc, Mirror, MirrorError, MirrorResult, Provider};
 
