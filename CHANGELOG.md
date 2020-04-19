@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.1] - 2020-04-19
+
+### Fixed
+- Fix generation of release binaries for linux, macos and windows.
+
 ### Changed
 - Native TLS support now enabled for reqwest
 - The linux binaries now use a vendored static versions of openssl.
+
+### Removed
+- Builds for other systems than 64-bit Linux, Windows and MacOS removed.
 
 ## [0.14.0] - 2020-04-14
 
