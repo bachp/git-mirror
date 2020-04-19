@@ -1,0 +1,91 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: Release
+
+env:
+  # Could, potentially automatically parse
+  # the bin name, but let's do it automatically for now.
+  RELEASE_BIN: git-mirror
+
+  # Space separated paths to include in the archive.
+  # Start relative paths with a dot if you don't want
+  # paths to be preserved. Use "/" as a delimiter.
+  RELEASE_ADDS: README.md LICENSE
+
+
+jobs:
+  build:
+    name: Build release
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build: [linux, macos, windows]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            rust: stable
+            release_suffix: linux-x86_64.tar.gz
+          - build: macos
+            os: macos-latest
+            rust: stable
+            release_suffix: mac-x86_64.zip
+          - build: windows
+            os: windows-latest
+            rust: stable
+            release_suffix: windows-x86_64.zip
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v1
+
+    - name: Setup rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: clippy
+
+    - name: Build release binary
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+
+    - name: Get version tag
+      id: vars
+      run: echo ::set-output name=tag::${GITHUB_REF/refs\/tags\//}
+      shell: bash
+
+    - name: Create artifact directory
+      run: mkdir artifacts
+
+    - name: Create archive for Linux
+      run: 7z a -ttar -so -an ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }} | 7z a -si ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
+      if: matrix.os == 'ubuntu-latest'
+
+    - name: Create archive for Windows
+      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }}.exe ${{ env.RELEASE_ADDS }}
+      if: matrix.os == 'windows-latest'
+
+    - name: Install p7zip
+      # 7Zip not available on MacOS, install p7zip via homebrew.
+      run: brew install p7zip
+      if: matrix.os == 'macos-latest'
+
+    - name: Create archive for MacOS
+      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }}
+      if: matrix.os == 'macos-latest'
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
+        asset_name: ${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
+        tag: ${{ github.ref }}
