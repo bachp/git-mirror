@@ -45,6 +45,7 @@ pub fn mirror_repo(
     dry_run: bool,
     git_executable: String,
     refspec: &Option<Vec<String>>,
+    remove_workrepo: bool,
 ) -> Result<(), String> {
     if dry_run {
         return Ok(());
@@ -73,6 +74,16 @@ pub fn mirror_repo(
 
     git.git_push_mirror(destination, &origin_dir, refspec)?;
 
+    if remove_workrepo {
+        fs::remove_dir_all(&origin_dir).map_err(|e| {
+            format!(
+                "Unable to delete working repository: {} because of error: {}",
+                &origin_dir.to_string_lossy(),
+                e
+            )
+        })?;
+    }
+
     Ok(())
 }
 
@@ -84,6 +95,7 @@ fn run_sync_task(
     label: &str,
     git_executable: &str,
     refspec: &Option<Vec<String>>,
+    remove_workrepo: bool,
 ) -> TestSuite {
     // Give the work to the worker pool
     rayon::ThreadPoolBuilder::new()
@@ -156,6 +168,7 @@ fn run_sync_task(
                         dry_run,
                         git_executable,
                         refspec,
+                        remove_workrepo,
                     ) {
                         Ok(_) => {
                             println!("END(OK) {}/{} [{}]: {}", i, total, Local::now(), name);
@@ -213,6 +226,7 @@ pub struct MirrorOptions {
     pub worker_count: usize,
     pub git_executable: String,
     pub refspec: Option<Vec<String>>,
+    pub remove_workrepo: bool,
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<(), String> {
@@ -269,6 +283,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         &provider.get_label(),
         &opts.git_executable,
         &opts.refspec,
+        opts.remove_workrepo,
     );
 
     end_time

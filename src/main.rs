@@ -100,6 +100,10 @@ struct Opt {
     /// Default refspec used to mirror repositories, can be overridden per project
     #[structopt(long)]
     refspec: Option<Vec<String>>,
+
+    /// Remove the local working repository after pushing. This requires a full re-clone on the next run.
+    #[structopt(long)]
+    remove_workrepo: bool,
 }
 
 impl Into<MirrorOptions> for Opt {
@@ -112,6 +116,7 @@ impl Into<MirrorOptions> for Opt {
             junit_file: self.junit_report,
             git_executable: self.git_executable,
             refspec: self.refspec,
+            remove_workrepo: self.remove_workrepo,
         }
     }
 }
