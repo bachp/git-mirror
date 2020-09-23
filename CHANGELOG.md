@@ -6,8 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.2] - 2020-09-23
+
 ### Fixed
 - --version now prints the correct name
+- Properly handle `no_proxy` (reqwest 0.10.8)
 
 ## [0.14.1] - 2020-04-19
 
