@@ -31,9 +31,9 @@ arg_enum! {
     }
 }
 
-/// A basic example
+/// command line options
 #[derive(StructOpt, Debug)]
-#[structopt(name = "basic")]
+#[structopt(name = "git-mirror")]
 struct Opt {
     /// Provider to use for fetching repositories
     #[structopt(
