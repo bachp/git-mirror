@@ -60,7 +60,7 @@ impl GitLab {
                 .get(&url)
                 .headers(headers.clone())
                 .send()
-                .or_else(|e| Err(format!("Unable to connect to: {} ({})", url, e)))?;
+                .map_err(|e| format!("Unable to connect to: {} ({})", url, e))?;
 
             debug!("HTTP Status Received: {}", res.status());
 
@@ -99,7 +99,7 @@ impl GitLab {
             };
 
             let results_page: Vec<T> = serde_json::from_reader(res)
-                .or_else(|e| Err(format!("Unable to parse response as JSON ({})", e)))?;
+                .map_err(|e| format!("Unable to parse response as JSON ({})", e))?;
 
             results.extend(results_page);
 
