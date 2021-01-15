@@ -532,12 +532,13 @@ dependencies = [
 
 [[package]]
 name = "junit-report"
-version = "0.2.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "319fa5c08582bbe20e187b761ab9b98115b3c0f2cb9622bc3cd1434106fe442c"
+checksum = "e4e00ad2de771fc4988af88b02cbd618c08c17920208c35c4bbfe67ccfab31eb"
 dependencies = [
  "chrono",
  "derive-getters",
+ "thiserror",
  "xml-rs",
 ]
 
