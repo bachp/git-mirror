@@ -133,7 +133,7 @@ fn main() {
         1 => "git_mirror=warn",
         _ => "git_mirror=error",
     };
-    env_logger::from_env(Env::default().default_filter_or(env_log_level)).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or(env_log_level)).init();
 
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();

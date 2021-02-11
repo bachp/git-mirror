@@ -14,7 +14,7 @@ readme="README.md"
 [dependencies]
 chrono = "0.4"
 log = "0.4"
-env_logger = "0.7"
+env_logger = "0.8"
 slug = "0.1"
 rayon = "1.5"
 serde = "1.0"
