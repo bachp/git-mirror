@@ -38,22 +38,20 @@ use crate::provider::{MirrorResult, Provider};
 
 use crate::git::{Git, GitWrapper};
 
-pub fn mirror_repo(
-    mirror_dir: &Path,
-    origin: &str,
-    destination: &str,
-    dry_run: bool,
-    git_executable: String,
-    refspec: &Option<Vec<String>>,
-) -> Result<(), String> {
-    if dry_run {
+//    origin: &str,
+//    destination: &str,
+
+//    label: &str,
+
+pub fn mirror_repo(origin: &str, destination: &str, opts: &MirrorOptions) -> Result<(), String> {
+    if opts.dry_run {
         return Ok(());
     }
 
-    let origin_dir = Path::new(&mirror_dir).join(slugify(origin));
+    let origin_dir = Path::new(&opts.mirror_dir).join(slugify(origin));
     debug!("Using origin dir: {0:?}", origin_dir);
 
-    let git = Git::new(git_executable);
+    let git = Git::new(opts.git_executable.clone());
 
     git.git_version()?;
 
@@ -71,23 +69,25 @@ pub fn mirror_repo(
 
     info!("Push to destination {}", destination);
 
-    git.git_push_mirror(destination, &origin_dir, refspec)?;
+    git.git_push_mirror(destination, &origin_dir, &opts.refspec)?;
+
+    if opts.remove_workrepo {
+        fs::remove_dir_all(&origin_dir).map_err(|e| {
+            format!(
+                "Unable to delete working repository: {} because of error: {}",
+                &origin_dir.to_string_lossy(),
+                e
+            )
+        })?;
+    }
 
     Ok(())
 }
 
-fn run_sync_task(
-    v: &[MirrorResult],
-    worker_count: usize,
-    mirror_dir: &Path,
-    dry_run: bool,
-    label: &str,
-    git_executable: &str,
-    refspec: &Option<Vec<String>>,
-) -> TestSuite {
+fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestSuite {
     // Give the work to the worker pool
     rayon::ThreadPoolBuilder::new()
-        .num_threads(worker_count)
+        .num_threads(opts.worker_count)
         .build_global()
         .unwrap();
 
@@ -120,13 +120,11 @@ fn run_sync_task(
             match x {
                 Ok(x) => {
                     let name = format!("{} -> {}", x.origin, x.destination);
-                    let mirror_dir = mirror_dir.to_owned();
                     let proj_fail = proj_fail.clone();
                     let proj_ok = proj_ok.clone();
                     let proj_start = proj_start.clone();
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
-                    let git_executable = git_executable.to_string();
                     println!("START {}/{} [{}]: {}", i, total, Local::now(), name);
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
@@ -137,7 +135,7 @@ fn run_sync_task(
                             &x.refspec
                         }
                         None => {
-                            match refspec {
+                            match opts.refspec.clone() {
                                 Some(r) => {
                                     debug!("Using global custom refspec: {:?}", r);
                                 }
@@ -145,18 +143,11 @@ fn run_sync_task(
                                     debug!("Using no custom refspec.");
                                 }
                             }
-                            refspec
+                            &opts.refspec
                         }
                     };
                     trace!("Refspec used: {:?}", refspec);
-                    match mirror_repo(
-                        &mirror_dir,
-                        &x.origin,
-                        &x.destination,
-                        dry_run,
-                        git_executable,
-                        refspec,
-                    ) {
+                    match mirror_repo(&x.origin, &x.destination, opts) {
                         Ok(_) => {
                             println!("END(OK) {}/{} [{}]: {}", i, total, Local::now(), name);
                             proj_end
@@ -213,6 +204,7 @@ pub struct MirrorOptions {
     pub worker_count: usize,
     pub git_executable: String,
     pub refspec: Option<Vec<String>>,
+    pub remove_workrepo: bool,
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<(), String> {
@@ -261,15 +253,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         .with_label_values(&[&provider.get_label()])
         .set(Utc::now().timestamp() as f64);
 
-    let ts = run_sync_task(
-        &v,
-        opts.worker_count,
-        &opts.mirror_dir,
-        opts.dry_run,
-        &provider.get_label(),
-        &opts.git_executable,
-        &opts.refspec,
-    );
+    let ts = run_sync_task(&v, &provider.get_label(), opts);
 
     end_time
         .with_label_values(&[&provider.get_label()])

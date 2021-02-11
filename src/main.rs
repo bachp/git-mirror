@@ -100,6 +100,10 @@ struct Opt {
     /// Default refspec used to mirror repositories, can be overridden per project
     #[structopt(long)]
     refspec: Option<Vec<String>>,
+
+    /// Remove the local working repository after pushing. This requires a full re-clone on the next run.
+    #[structopt(long)]
+    remove_workrepo: bool,
 }
 
 impl Into<MirrorOptions> for Opt {
@@ -112,6 +116,7 @@ impl Into<MirrorOptions> for Opt {
             junit_file: self.junit_report,
             git_executable: self.git_executable,
             refspec: self.refspec,
+            remove_workrepo: self.remove_workrepo,
         }
     }
 }
@@ -128,7 +133,7 @@ fn main() {
         1 => "git_mirror=warn",
         _ => "git_mirror=error",
     };
-    env_logger::from_env(Env::default().default_filter_or(env_log_level)).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or(env_log_level)).init();
 
     // Run OpenSSL probing on all platforms even the ones not using it
     openssl_probe::init_ssl_cert_env_vars();
