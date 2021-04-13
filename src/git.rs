@@ -4,7 +4,7 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 use std::result;
 
@@ -14,14 +14,10 @@ type Result = result::Result<(), String>;
 
 pub trait GitWrapper {
     fn git_version(&self) -> Result;
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result;
-    fn git_update_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result;
-    fn git_push_mirror(
-        &self,
-        dest: &str,
-        repo_dir: &PathBuf,
-        refspec: &Option<Vec<String>>,
-    ) -> Result;
+    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result;
+    fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result;
+    fn git_push_mirror(&self, dest: &str, repo_dir: &Path, refspec: &Option<Vec<String>>)
+        -> Result;
 }
 
 pub struct Git {
@@ -75,7 +71,7 @@ impl GitWrapper for Git {
         self.run_cmd(cmd)
     }
 
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result {
+    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result {
         let mut clone_cmd = self.git_base_cmd();
         clone_cmd
             .args(&["clone", "--mirror"])
@@ -85,7 +81,7 @@ impl GitWrapper for Git {
         self.run_cmd(clone_cmd)
     }
 
-    fn git_update_mirror(&self, origin: &str, repo_dir: &PathBuf) -> Result {
+    fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result {
         let mut set_url_cmd = self.git_base_cmd();
         set_url_cmd
             .current_dir(repo_dir)
@@ -105,7 +101,7 @@ impl GitWrapper for Git {
     fn git_push_mirror(
         &self,
         dest: &str,
-        repo_dir: &PathBuf,
+        repo_dir: &Path,
         refspec: &Option<Vec<String>>,
     ) -> Result {
         let mut push_cmd = self.git_base_cmd();

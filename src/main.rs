@@ -106,17 +106,17 @@ struct Opt {
     remove_workrepo: bool,
 }
 
-impl Into<MirrorOptions> for Opt {
-    fn into(self) -> MirrorOptions {
+impl From<Opt> for MirrorOptions {
+    fn from(opt: Opt) -> MirrorOptions {
         MirrorOptions {
-            mirror_dir: self.mirror_dir,
-            dry_run: self.dry_run,
-            worker_count: self.worker_count,
-            metrics_file: self.metric_file,
-            junit_file: self.junit_report,
-            git_executable: self.git_executable,
-            refspec: self.refspec,
-            remove_workrepo: self.remove_workrepo,
+            mirror_dir: opt.mirror_dir,
+            dry_run: opt.dry_run,
+            worker_count: opt.worker_count,
+            metrics_file: opt.metric_file,
+            junit_file: opt.junit_report,
+            git_executable: opt.git_executable,
+            refspec: opt.refspec,
+            remove_workrepo: opt.remove_workrepo,
         }
     }
 }
