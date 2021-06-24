@@ -34,7 +34,7 @@ use junit_report::{DateTime, Report, TestCase, TestSuite};
 use prometheus::register_gauge_vec;
 use prometheus::{Encoder, TextEncoder};
 
-use crate::provider::{MirrorResult, Provider};
+use crate::provider::{MirrorError, MirrorResult, Provider};
 
 use crate::git::{Git, GitWrapper};
 
@@ -181,17 +181,26 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                 }
                 Err(e) => {
                     proj_skip.with_label_values(&[label]).inc();
-                    error!("Error parsing YAML: {:?}", e);
                     let duration = Utc::now() - start;
-                    TestCase::error("", duration, "parse error", &format!("{:?}", e))
+
+                    match e {
+                        MirrorError::Description(d, se) => {
+                            error!("Error parsing YAML: {}, Error: {:?}", d, se);
+                            TestCase::error("", duration, "parse error", &format!("{:?}", e))
+                        }
+                        MirrorError::Skip(url) => {
+                            println!("SKIP {}/{} [{}]: {}", i, total, Local::now(), url);
+                            TestCase::skipped(url)
+                        }
+                    }
                 }
             }
         })
         .collect::<Vec<TestCase>>();
 
     let success = results.iter().filter(|ref x| x.is_success()).count();
-    let mut ts = TestSuite::new("Sync Job");
-    ts.add_testcases(results);
+    let ts = TestSuite::new("Sync Job");
+    let ts = ts.add_testcases(results);
     println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
     ts
 }
@@ -280,8 +289,7 @@ fn write_metrics(f: &Path) {
 }
 
 fn write_junit_report(f: &Path, ts: TestSuite) {
-    let mut report = Report::default();
-    report.add_testsuite(ts);
+    let report = Report::default().add_testsuite(ts);
     let mut file = File::create(f).unwrap();
     report.write_xml(&mut file).unwrap();
 }
