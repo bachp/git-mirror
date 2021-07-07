@@ -43,7 +43,12 @@ use crate::git::{Git, GitWrapper};
 
 //    label: &str,
 
-pub fn mirror_repo(origin: &str, destination: &str, opts: &MirrorOptions) -> Result<(), String> {
+pub fn mirror_repo(
+    origin: &str,
+    destination: &str,
+    refspec: &Option<Vec<String>>,
+    opts: &MirrorOptions,
+) -> Result<(), String> {
     if opts.dry_run {
         return Ok(());
     }
@@ -69,7 +74,7 @@ pub fn mirror_repo(origin: &str, destination: &str, opts: &MirrorOptions) -> Res
 
     info!("Push to destination {}", destination);
 
-    git.git_push_mirror(destination, &origin_dir, &opts.refspec)?;
+    git.git_push_mirror(destination, &origin_dir, refspec)?;
 
     if opts.remove_workrepo {
         fs::remove_dir_all(&origin_dir).map_err(|e| {
@@ -147,7 +152,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                         }
                     };
                     trace!("Refspec used: {:?}", refspec);
-                    match mirror_repo(&x.origin, &x.destination, opts) {
+                    match mirror_repo(&x.origin, &x.destination, refspec, opts) {
                         Ok(_) => {
                             println!("END(OK) {}/{} [{}]: {}", i, total, Local::now(), name);
                             proj_end
