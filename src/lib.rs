@@ -28,7 +28,9 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIter
 // Time handling
 use chrono::{Local, Utc};
 
-use junit_report::{DateTime, Report, TestCase, TestSuite};
+use junit_report::{
+    DateTime, ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuiteBuilder,
+};
 
 // Monitoring;
 use prometheus::register_gauge_vec;
@@ -159,7 +161,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(Utc::now().timestamp() as f64);
                             proj_ok.with_label_values(&[&label]).inc();
-                            TestCase::success(&name, Utc::now() - start)
+                            TestCaseBuilder::success(&name, Utc::now() - start).build()
                         }
                         Err(e) => {
                             println!(
@@ -175,12 +177,13 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 .set(Utc::now().timestamp() as f64);
                             proj_fail.with_label_values(&[&label]).inc();
                             error!("Unable to sync repo {} ({})", name, e);
-                            TestCase::error(
+                            TestCaseBuilder::error(
                                 &name,
                                 Utc::now() - start,
                                 "sync error",
                                 &format!("{:?}", e),
                             )
+                            .build()
                         }
                     }
                 }
@@ -191,11 +194,12 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     match e {
                         MirrorError::Description(d, se) => {
                             error!("Error parsing YAML: {}, Error: {:?}", d, se);
-                            TestCase::error("", duration, "parse error", &format!("{:?}", e))
+                            TestCaseBuilder::error("", duration, "parse error", &format!("{:?}", e))
+                                .build()
                         }
                         MirrorError::Skip(url) => {
                             println!("SKIP {}/{} [{}]: {}", i, total, Local::now(), url);
-                            TestCase::skipped(url)
+                            TestCaseBuilder::skipped(url).build()
                         }
                     }
                 }
@@ -204,8 +208,9 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
         .collect::<Vec<TestCase>>();
 
     let success = results.iter().filter(|ref x| x.is_success()).count();
-    let ts = TestSuite::new("Sync Job");
-    let ts = ts.add_testcases(results);
+    let ts = TestSuiteBuilder::new("Sync Job")
+        .add_testcases(results)
+        .build();
     println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
     ts
 }
@@ -294,7 +299,7 @@ fn write_metrics(f: &Path) {
 }
 
 fn write_junit_report(f: &Path, ts: TestSuite) {
-    let report = Report::default().add_testsuite(ts);
+    let report = ReportBuilder::default().add_testsuite(ts).build();
     let mut file = File::create(f).unwrap();
     report.write_xml(&mut file).unwrap();
 }

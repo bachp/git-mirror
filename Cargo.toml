@@ -1,6 +1,6 @@
 [package]
 name = "git-mirror"
-version = "0.14.3"
+version = "0.14.4"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 description = "Sync between different git repositories."
 license = "MIT"
@@ -25,7 +25,7 @@ fs2 = "0.4"
 prometheus = "0.12"
 reqwest = {version = "0.11", features = ["native-tls-vendored", "blocking"] }
 openssl-probe = "0.1"
-junit-report = "0.5"
+junit-report = "0.6"
 structopt = "0.3"
 
 [profile.release]
