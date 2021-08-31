@@ -153,7 +153,7 @@ impl Provider for GitLab {
 
         let mut headers = HeaderMap::new();
         if let Some(ref token) = self.private_token {
-            match HeaderValue::from_str(&token) {
+            match HeaderValue::from_str(token) {
                 Ok(token) => {
                     headers.insert("PRIVATE-TOKEN", token);
                 }

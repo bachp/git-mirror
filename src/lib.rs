@@ -207,7 +207,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
         })
         .collect::<Vec<TestCase>>();
 
-    let success = results.iter().filter(|ref x| x.is_success()).count();
+    let success = results.iter().filter(|x| x.is_success()).count();
     let ts = TestSuiteBuilder::new("Sync Job")
         .add_testcases(results)
         .build();
