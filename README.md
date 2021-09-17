@@ -52,6 +52,8 @@ A list of currently supported fields
   refspec: ["master", "2.0", "+refs/tags/*:refs/tags/*"]
   ```
   See also https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
+  
+  Note: If set, this field would override the default (global) refspec from the command line option `--refspec`, if specified. Multiple refs can be set by repeating the option.
 
 Any other fields are ignored
 
