@@ -22,7 +22,7 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 fs2 = "0.4"
-prometheus = "0.12"
+prometheus = "0.13"
 reqwest = {version = "0.11", features = ["native-tls-vendored", "blocking"] }
 openssl-probe = "0.1"
 junit-report = "0.6"
