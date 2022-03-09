@@ -26,11 +26,9 @@ extern crate serde_derive;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
-use time::{OffsetDateTime};
+use time::OffsetDateTime;
 
-use junit_report::{
-    ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuiteBuilder,
-};
+use junit_report::{ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuiteBuilder};
 
 // Monitoring;
 use prometheus::register_gauge_vec;
@@ -132,7 +130,13 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     let proj_start = proj_start.clone();
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
-                    println!("START {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), name);
+                    println!(
+                        "START {}/{} [{}]: {}",
+                        i,
+                        total,
+                        OffsetDateTime::now_utc(),
+                        name
+                    );
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
                         .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
@@ -156,12 +160,19 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     trace!("Refspec used: {:?}", refspec);
                     match mirror_repo(&x.origin, &x.destination, refspec, opts) {
                         Ok(_) => {
-                            println!("END(OK) {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), name);
+                            println!(
+                                "END(OK) {}/{} [{}]: {}",
+                                i,
+                                total,
+                                OffsetDateTime::now_utc(),
+                                name
+                            );
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                             proj_ok.with_label_values(&[&label]).inc();
-                            TestCaseBuilder::success(&name, OffsetDateTime::now_utc() - start).build()
+                            TestCaseBuilder::success(&name, OffsetDateTime::now_utc() - start)
+                                .build()
                         }
                         Err(e) => {
                             println!(
@@ -198,7 +209,13 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 .build()
                         }
                         MirrorError::Skip(url) => {
-                            println!("SKIP {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), url);
+                            println!(
+                                "SKIP {}/{} [{}]: {}",
+                                i,
+                                total,
+                                OffsetDateTime::now_utc(),
+                                url
+                            );
                             TestCaseBuilder::skipped(url).build()
                         }
                     }
@@ -211,7 +228,12 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
     let ts = TestSuiteBuilder::new("Sync Job")
         .add_testcases(results)
         .build();
-    println!("DONE [{2}]: {0}/{1}", success, total, OffsetDateTime::now_utc());
+    println!(
+        "DONE [{2}]: {0}/{1}",
+        success,
+        total,
+        OffsetDateTime::now_utc()
+    );
     ts
 }
 
