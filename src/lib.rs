@@ -26,10 +26,10 @@ extern crate serde_derive;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
-use chrono::{Local, Utc};
+use time::{OffsetDateTime};
 
 use junit_report::{
-    DateTime, ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuiteBuilder,
+    ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuiteBuilder,
 };
 
 // Monitoring;
@@ -123,7 +123,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
         .enumerate()
         .map(|(i, x)| {
             proj_total.with_label_values(&[label]).inc();
-            let start: DateTime<Utc> = Utc::now();
+            let start = OffsetDateTime::now_utc();
             match x {
                 Ok(x) => {
                     let name = format!("{} -> {}", x.origin, x.destination);
@@ -132,10 +132,10 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     let proj_start = proj_start.clone();
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
-                    println!("START {}/{} [{}]: {}", i, total, Local::now(), name);
+                    println!("START {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), name);
                     proj_start
                         .with_label_values(&[&x.origin, &x.destination, &label])
-                        .set(Utc::now().timestamp() as f64);
+                        .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                     let refspec = match &x.refspec {
                         Some(r) => {
                             debug!("Using repo specific refspec: {:?}", r);
@@ -156,30 +156,30 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     trace!("Refspec used: {:?}", refspec);
                     match mirror_repo(&x.origin, &x.destination, refspec, opts) {
                         Ok(_) => {
-                            println!("END(OK) {}/{} [{}]: {}", i, total, Local::now(), name);
+                            println!("END(OK) {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), name);
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
-                                .set(Utc::now().timestamp() as f64);
+                                .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                             proj_ok.with_label_values(&[&label]).inc();
-                            TestCaseBuilder::success(&name, Utc::now() - start).build()
+                            TestCaseBuilder::success(&name, OffsetDateTime::now_utc() - start).build()
                         }
                         Err(e) => {
                             println!(
                                 "END(FAIL) {}/{} [{}]: {} ({})",
                                 i,
                                 total,
-                                Local::now(),
+                                OffsetDateTime::now_utc(),
                                 name,
                                 e
                             );
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
-                                .set(Utc::now().timestamp() as f64);
+                                .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                             proj_fail.with_label_values(&[&label]).inc();
                             error!("Unable to sync repo {} ({})", name, e);
                             TestCaseBuilder::error(
                                 &name,
-                                Utc::now() - start,
+                                OffsetDateTime::now_utc() - start,
                                 "sync error",
                                 &format!("{:?}", e),
                             )
@@ -189,7 +189,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                 }
                 Err(e) => {
                     proj_skip.with_label_values(&[label]).inc();
-                    let duration = Utc::now() - start;
+                    let duration = OffsetDateTime::now_utc() - start;
 
                     match e {
                         MirrorError::Description(d, se) => {
@@ -198,7 +198,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 .build()
                         }
                         MirrorError::Skip(url) => {
-                            println!("SKIP {}/{} [{}]: {}", i, total, Local::now(), url);
+                            println!("SKIP {}/{} [{}]: {}", i, total, OffsetDateTime::now_utc(), url);
                             TestCaseBuilder::skipped(url).build()
                         }
                     }
@@ -211,7 +211,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
     let ts = TestSuiteBuilder::new("Sync Job")
         .add_testcases(results)
         .build();
-    println!("DONE [{2}]: {0}/{1}", success, total, Local::now());
+    println!("DONE [{2}]: {0}/{1}", success, total, OffsetDateTime::now_utc());
     ts
 }
 
@@ -270,13 +270,13 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
 
     start_time
         .with_label_values(&[&provider.get_label()])
-        .set(Utc::now().timestamp() as f64);
+        .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
 
     let ts = run_sync_task(&v, &provider.get_label(), opts);
 
     end_time
         .with_label_values(&[&provider.get_label()])
-        .set(Utc::now().timestamp() as f64);
+        .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
 
     match opts.metrics_file {
         Some(ref f) => write_metrics(f),
