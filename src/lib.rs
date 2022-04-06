@@ -4,6 +4,10 @@
  * SPDX-License-Identifier:     MIT
  */
 
+pub mod error;
+mod git;
+pub mod provider;
+
 use std::fs;
 use std::fs::File;
 use std::path::Path;
@@ -34,21 +38,18 @@ use junit_report::{ReportBuilder, TestCase, TestCaseBuilder, TestSuite, TestSuit
 use prometheus::register_gauge_vec;
 use prometheus::{Encoder, TextEncoder};
 
-use crate::provider::{MirrorError, MirrorResult, Provider};
+use provider::{MirrorError, MirrorResult, Provider};
 
-use crate::git::{Git, GitWrapper};
+use git::{Git, GitWrapper};
 
-//    origin: &str,
-//    destination: &str,
-
-//    label: &str,
+use error::{GitMirrorError, Result};
 
 pub fn mirror_repo(
     origin: &str,
     destination: &str,
     refspec: &Option<Vec<String>>,
     opts: &MirrorOptions,
-) -> Result<(), String> {
+) -> Result<()> {
     if opts.dry_run {
         return Ok(());
     }
@@ -69,7 +70,10 @@ pub fn mirror_repo(
 
         git.git_clone_mirror(origin, &origin_dir)?;
     } else {
-        return Err(format!("Local origin dir is a file: {:?}", origin_dir));
+        return Err(GitMirrorError::GenericError(format!(
+            "Local origin dir is a file: {:?}",
+            origin_dir
+        )));
     }
 
     info!("Push to destination {}", destination);
@@ -78,11 +82,11 @@ pub fn mirror_repo(
 
     if opts.remove_workrepo {
         fs::remove_dir_all(&origin_dir).map_err(|e| {
-            format!(
+            GitMirrorError::GenericError(format!(
                 "Unable to delete working repository: {} because of error: {}",
                 &origin_dir.to_string_lossy(),
                 e
-            )
+            ))
         })?;
     }
 
@@ -248,7 +252,7 @@ pub struct MirrorOptions {
     pub remove_workrepo: bool,
 }
 
-pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<(), String> {
+pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
         "Start time of the sync as unix timestamp",
@@ -265,30 +269,34 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
     // Make sure the mirror directory exists
     trace!("Create mirror directory at {:?}", opts.mirror_dir);
     fs::create_dir_all(&opts.mirror_dir).map_err(|e| {
-        format!(
+        GitMirrorError::GenericError(format!(
             "Unable to create mirror dir: {:?} ({})",
             &opts.mirror_dir, e
-        )
+        ))
     })?;
 
     // Check that only one instance is running against a mirror directory
     let lockfile_path = opts.mirror_dir.join("git-mirror.lock");
-    let lockfile = fs::File::create(&lockfile_path)
-        .map_err(|e| format!("Unable to open lockfile: {:?} ({})", &lockfile_path, e))?;
+    let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
+        GitMirrorError::GenericError(format!(
+            "Unable to open lockfile: {:?} ({})",
+            &lockfile_path, e
+        ))
+    })?;
 
     lockfile.try_lock_exclusive().map_err(|e| {
-        format!(
+        GitMirrorError::GenericError(format!(
             "Another instance is already running against the same mirror directory: {:?} ({})",
             &opts.mirror_dir, e
-        )
+        ))
     })?;
 
     trace!("Aquired lockfile: {:?}", &lockfile);
 
     // Get the list of repos to sync from gitlabsss
-    let v = provider
-        .get_mirror_repos()
-        .map_err(|e| -> String { format!("Unable to get mirror repos ({})", e) })?;
+    let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
+        GitMirrorError::GenericError(format!("Unable to get mirror repos ({})", e))
+    })?;
 
     start_time
         .with_label_values(&[&provider.get_label()])
@@ -325,6 +333,3 @@ fn write_junit_report(f: &Path, ts: TestSuite) {
     let mut file = File::create(f).unwrap();
     report.write_xml(&mut file).unwrap();
 }
-
-mod git;
-pub mod provider;

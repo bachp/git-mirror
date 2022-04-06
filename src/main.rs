@@ -163,7 +163,7 @@ fn main() {
         }
         Err(e) => {
             error!("Error occured: {}", e);
-            exit(2); // TODO: Return code in erro
+            exit(e.into());
         }
     };
 }

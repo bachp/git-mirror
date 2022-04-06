@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Failed runs return a non zero exit code #39
+
 ## [0.14.5] - 2022-03-09
 
 ### Changed
