@@ -250,6 +250,7 @@ pub struct MirrorOptions {
     pub git_executable: String,
     pub refspec: Option<Vec<String>>,
     pub remove_workrepo: bool,
+    pub fail_on_sync_error: bool,
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()> {
@@ -313,12 +314,19 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         None => trace!("Skipping metrics file creation"),
     };
 
+    // Check if any tasks failed
+    let error_count = ts.errors() + ts.failures();
+
     match opts.junit_file {
         Some(ref f) => write_junit_report(f, ts),
         None => trace!("Skipping junit report"),
     }
 
-    Ok(())
+    if opts.fail_on_sync_error && error_count > 0 {
+        Err(GitMirrorError::SyncError(error_count))
+    } else {
+        Ok(())
+    }
 }
 
 fn write_metrics(f: &Path) {

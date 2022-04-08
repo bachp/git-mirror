@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+Add `--fail-on-sync-error` command line flag. It triggers exiting with 1 if any of the sync tasks fail.
+
 ### Fixed
 
 - Failed runs return a non zero exit code #39

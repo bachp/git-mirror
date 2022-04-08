@@ -104,6 +104,10 @@ struct Opt {
     /// Remove the local working repository after pushing. This requires a full re-clone on the next run.
     #[structopt(long)]
     remove_workrepo: bool,
+
+    /// Fail on sync task error. If set the executable will exit with 1 if any sync task failed.
+    #[structopt(long)]
+    fail_on_sync_error: bool,
 }
 
 impl From<Opt> for MirrorOptions {
@@ -117,6 +121,7 @@ impl From<Opt> for MirrorOptions {
             git_executable: opt.git_executable,
             refspec: opt.refspec,
             remove_workrepo: opt.remove_workrepo,
+            fail_on_sync_error: opt.fail_on_sync_error,
         }
     }
 }

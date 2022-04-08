@@ -10,11 +10,14 @@ pub enum GitMirrorError {
     GitError(#[from] GitError),
     #[error("Mirror extraction failed: {0}")]
     MirrorError(#[from] MirrorError),
+    #[error("{0} sync tasks failed")]
+    SyncError(usize),
 }
 
 impl Into<i32> for GitMirrorError {
     fn into(self) -> i32 {
         match self {
+            Self::SyncError(_) => 1,
             Self::GenericError(_) => 2,
             Self::GitError(_) => 3,
             Self::MirrorError(_) => 4,
