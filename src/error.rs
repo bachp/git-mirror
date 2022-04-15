@@ -14,13 +14,13 @@ pub enum GitMirrorError {
     SyncError(usize),
 }
 
-impl Into<i32> for GitMirrorError {
-    fn into(self) -> i32 {
-        match self {
-            Self::SyncError(_) => 1,
-            Self::GenericError(_) => 2,
-            Self::GitError(_) => 3,
-            Self::MirrorError(_) => 4,
+impl From<GitMirrorError> for i32 {
+    fn from(mirror: GitMirrorError) -> i32 {
+        match mirror {
+            GitMirrorError::SyncError(_) => 1,
+            GitMirrorError::GenericError(_) => 2,
+            GitMirrorError::GitError(_) => 3,
+            GitMirrorError::MirrorError(_) => 4,
         }
     }
 }
