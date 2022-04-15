@@ -4,6 +4,7 @@
  * SPDX-License-Identifier:     MIT
  */
 
+use thiserror::Error;
 /// A representation of a mirror job from orgin to destination
 #[derive(Debug)]
 pub struct Mirror {
@@ -13,9 +14,11 @@ pub struct Mirror {
 }
 
 /// An error occuring during mirror creation
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MirrorError {
+    #[error("data store disconnected")]
     Description(String, serde_yaml::Error),
+    #[error("entry explicitly skiped")]
     Skip(String),
 }
 
