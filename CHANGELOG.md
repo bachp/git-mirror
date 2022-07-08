@@ -6,13 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.6] - 2022-07-08
+
 ### Added
 
-Add `--fail-on-sync-error` command line flag. It triggers exiting with 1 if any of the sync tasks fail.
+- Add `--fail-on-sync-error` command line flag. It triggers exiting with 1 if any of the sync tasks fail
 
 ### Fixed
 
 - Failed runs return a non zero exit code #39
+- Update OpenSSL to 1.1.1q to address security vulnerability
+
+### Changed
+
+- Update dependencies
 
 ## [0.14.5] - 2022-03-09
 
