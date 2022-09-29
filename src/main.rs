@@ -12,9 +12,9 @@ use env_logger::Env;
 use log::{debug, error, info};
 
 // Used to do command line parsing
+use clap::{crate_name, crate_version};
+use clap::{ArgAction, Parser, ValueEnum};
 use std::path::PathBuf;
-use structopt::clap::{arg_enum, crate_name, crate_version};
-use structopt::StructOpt;
 
 // Load the real functionality
 use git_mirror::do_mirror;
@@ -23,90 +23,89 @@ use git_mirror::MirrorOptions;
 
 use std::process::exit;
 
-arg_enum! {
-    #[derive(Debug)]
-    enum Providers {
-      GitLab,
-      GitHub
-    }
+#[derive(ValueEnum, Clone, Debug)]
+#[value(rename_all = "verbatim")]
+enum Providers {
+    GitLab,
+    GitHub,
 }
 
 /// command line options
-#[derive(StructOpt, Debug)]
-#[structopt(name = "git-mirror")]
+#[derive(Parser, Debug)]
+#[command(name = "git-mirror")]
 struct Opt {
     /// Provider to use for fetching repositories
-    #[structopt(
+    #[arg(
         long = "provider",
-        short = "p",
+        short = 'p',
         default_value = "GitLab",
-        possible_values = &Providers::variants(),
-        case_insensitive = true
+        ignore_case = true,
+        value_enum
     )]
     provider: Providers,
 
     /// URL of the instance to get repositories from
-    #[structopt(
+    #[arg(
         long = "url",
-        short = "u",
-        default_value_ifs(&[
-            ("provider", Some("GitLab"), "https://gitlab.com"),
-            ("provider", Some("GitHub"), "https://api.github.com"),
+        short = 'u',
+        default_value_ifs([
+            ("provider", "GitLab", Some("https://gitlab.com")),
+            ("provider", "GitHub", Some("https://api.github.com")),
         ])
     )]
     url: String,
 
     /// Name of the group to check for repositories to sync
-    #[structopt(long = "group", short = "g")]
+    #[arg(long = "group", short = 'g')]
     group: String,
 
     /// Directory where the local clones are stored
-    #[structopt(long = "mirror-dir", short = "m", default_value = "./mirror-dir")]
+    #[arg(long = "mirror-dir", short = 'm', default_value = "./mirror-dir")]
     mirror_dir: PathBuf,
 
     /// Verbosity level
-    #[structopt(short, long, parse(from_occurrences))]
+    #[arg(short, long, action = ArgAction::Count)]
     verbose: u8,
 
     /// Use http(s) instead of SSH to sync the GitLab repository
-    #[structopt(long)]
+    #[arg(long)]
     http: bool,
 
     /// Only print what to do without actually running any git commands
-    #[structopt(long)]
+    #[arg(long)]
     dry_run: bool,
 
     /// Number of concurrent mirror jobs
-    #[structopt(short = "c", long, default_value = "1")]
+    #[arg(short = 'c', long, default_value = "1")]
     worker_count: usize,
 
     /// Location where to store metrics for consumption by
     /// Prometheus node exporter's text file colloctor
-    #[structopt(long)]
+    #[arg(long)]
     metric_file: Option<PathBuf>,
 
     /// Location where to store the Junit XML report
-    #[structopt(long)]
+    #[arg(long)]
     junit_report: Option<PathBuf>,
 
     /// Git executable to use
-    #[structopt(long, default_value = "git")]
+    #[arg(long, default_value = "git")]
     git_executable: String,
 
     /// Private token or Personal access token to access the GitLab or GitHub API
-    #[structopt(long, env = "PRIVATE_TOKEN")]
+    #[arg(long, env = "PRIVATE_TOKEN")]
     private_token: Option<String>,
 
     /// Default refspec used to mirror repositories, can be overridden per project
-    #[structopt(long)]
+    #[arg(long)]
     refspec: Option<Vec<String>>,
 
     /// Remove the local working repository after pushing. This requires a full re-clone on the next run.
-    #[structopt(long)]
+    #[arg(long)]
     remove_workrepo: bool,
 
     /// Fail on sync task error. If set the executable will exit with 1 if any sync task failed.
-    #[structopt(long)]
+    #[arg(long)]
     fail_on_sync_error: bool,
 }
 
@@ -128,7 +127,7 @@ impl From<Opt> for MirrorOptions {
 
 fn main() {
     // Setup commandline parser
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     debug!("{:#?}", opt);
 
     let env_log_level = match cmp::min(opt.verbose, 4) {
@@ -171,4 +170,15 @@ fn main() {
             exit(e.into());
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Opt;
+
+    #[test]
+    fn verify_app() {
+        use clap::CommandFactory;
+        Opt::command().debug_assert()
+    }
 }
