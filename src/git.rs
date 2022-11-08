@@ -95,7 +95,7 @@ impl GitWrapper for Git {
     fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError> {
         let mut clone_cmd = self.git_base_cmd();
         clone_cmd
-            .args(&["clone", "--mirror"])
+            .args(["clone", "--mirror"])
             .arg(origin)
             .arg(repo_dir);
 
@@ -106,15 +106,15 @@ impl GitWrapper for Git {
         let mut set_url_cmd = self.git_base_cmd();
         set_url_cmd
             .current_dir(repo_dir)
-            .args(&["remote", "set-url", "origin"])
+            .args(["remote", "set-url", "origin"])
             .arg(origin);
 
         self.run_cmd(set_url_cmd)?;
 
         let mut remote_update_cmd = self.git_base_cmd();
         remote_update_cmd
-            .current_dir(&repo_dir)
-            .args(&["remote", "update", "--prune"]);
+            .current_dir(repo_dir)
+            .args(["remote", "update", "--prune"]);
 
         self.run_cmd(remote_update_cmd)
     }
@@ -131,10 +131,10 @@ impl GitWrapper for Git {
         if let Some(r) = &refspec {
             push_cmd.arg(dest);
             for spec in r.iter() {
-                push_cmd.arg(&spec);
+                push_cmd.arg(spec);
             }
         } else {
-            push_cmd.args(&["--mirror", dest]);
+            push_cmd.args(["--mirror", dest]);
         }
         self.run_cmd(push_cmd)
     }
