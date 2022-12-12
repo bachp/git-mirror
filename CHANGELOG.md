@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.7] - 2022-12-12
+
+### Added
+
+- Add `--lfs` command line flag. To include LFS artifacts.
+
+### Changed
+
+- Update dependencies
+
 ## [0.14.6] - 2022-07-08
 
 ### Added
