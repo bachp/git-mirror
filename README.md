@@ -4,6 +4,8 @@ Git Mirror will watch a GitLab or GitHub groups and keep it in sync with externa
 
 ## Usage
 
+Install git and git-lfs.
+
 1. Create group on your gitlab instance or gitlab.com. e.g. `mirror-test`
 2. Add a repository you like to sync to. e.g `my-project`
 3. Add a description to the project in YAML format containing an `origin` field. e.g. `origin: https://git.example.org/my-project.git`

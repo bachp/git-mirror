@@ -57,9 +57,13 @@ pub fn mirror_repo(
     let origin_dir = Path::new(&opts.mirror_dir).join(slugify(origin));
     debug!("Using origin dir: {0:?}", origin_dir);
 
-    let git = Git::new(opts.git_executable.clone());
+    let git = Git::new(opts.git_executable.clone(), opts.mirror_lfs);
 
     git.git_version()?;
+
+    if opts.mirror_lfs {
+        git.git_lfs_version()?;
+    }
 
     if origin_dir.is_dir() {
         info!("Local Update for {}", origin);
@@ -251,6 +255,7 @@ pub struct MirrorOptions {
     pub refspec: Option<Vec<String>>,
     pub remove_workrepo: bool,
     pub fail_on_sync_error: bool,
+    pub mirror_lfs: bool,
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()> {

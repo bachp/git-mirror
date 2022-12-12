@@ -107,6 +107,10 @@ struct Opt {
     /// Fail on sync task error. If set the executable will exit with 1 if any sync task failed.
     #[arg(long)]
     fail_on_sync_error: bool,
+
+    /// Mirror lfs objects as well
+    #[arg(long, default_value = "false")]
+    lfs: bool,
 }
 
 impl From<Opt> for MirrorOptions {
@@ -121,6 +125,7 @@ impl From<Opt> for MirrorOptions {
             refspec: opt.refspec,
             remove_workrepo: opt.remove_workrepo,
             fail_on_sync_error: opt.fail_on_sync_error,
+            mirror_lfs: opt.lfs,
         }
     }
 }
