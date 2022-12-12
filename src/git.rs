@@ -31,6 +31,7 @@ pub enum GitError {
 pub trait GitWrapper {
     /// Get the git version
     fn git_version(&self) -> Result<(), GitError>;
+    fn git_lfs_version(&self) -> Result<(), GitError>;
     fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError>;
     fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError>;
     fn git_push_mirror(
@@ -44,11 +45,15 @@ pub trait GitWrapper {
 /// Git command line wrapper
 pub struct Git {
     executable: String,
+    lfs_enabled: bool,
 }
 
 impl Git {
-    pub fn new(executable: String) -> Git {
-        Git { executable }
+    pub fn new(executable: String, lfs_enabled: bool) -> Git {
+        Git {
+            executable,
+            lfs_enabled,
+        }
     }
 
     fn git_base_cmd(&self) -> Command {
@@ -92,6 +97,14 @@ impl GitWrapper for Git {
         self.run_cmd(cmd)
     }
 
+    fn git_lfs_version(&self) -> Result<(), GitError> {
+        let mut cmd = self.git_base_cmd();
+        cmd.arg("lfs");
+        cmd.arg("version");
+
+        self.run_cmd(cmd)
+    }
+
     fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError> {
         let mut clone_cmd = self.git_base_cmd();
         clone_cmd
@@ -99,7 +112,18 @@ impl GitWrapper for Git {
             .arg(origin)
             .arg(repo_dir);
 
-        self.run_cmd(clone_cmd)
+        self.run_cmd(clone_cmd)?;
+
+        if self.lfs_enabled {
+            let mut lfs_fetch_cmd = self.git_base_cmd();
+            lfs_fetch_cmd
+                .args(["lfs", "fetch", "--all"])
+                .current_dir(repo_dir);
+
+            self.run_cmd(lfs_fetch_cmd)
+        } else {
+            Ok(())
+        }
     }
 
     fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError> {
@@ -116,7 +140,18 @@ impl GitWrapper for Git {
             .current_dir(repo_dir)
             .args(["remote", "update", "--prune"]);
 
-        self.run_cmd(remote_update_cmd)
+        self.run_cmd(remote_update_cmd)?;
+
+        if self.lfs_enabled {
+            let mut lfs_fetch_cmd = self.git_base_cmd();
+            lfs_fetch_cmd
+                .args(["lfs", "fetch", "--all"])
+                .current_dir(repo_dir);
+
+            self.run_cmd(lfs_fetch_cmd)
+        } else {
+            Ok(())
+        }
     }
 
     fn git_push_mirror(
@@ -125,6 +160,14 @@ impl GitWrapper for Git {
         repo_dir: &Path,
         refspec: &Option<Vec<String>>,
     ) -> Result<(), GitError> {
+        if self.lfs_enabled {
+            let mut lfs_install_cmd = self.git_base_cmd();
+            lfs_install_cmd
+                .args(["lfs", "install"])
+                .current_dir(repo_dir);
+            self.run_cmd(lfs_install_cmd)?;
+        }
+
         let mut push_cmd = self.git_base_cmd();
         push_cmd.current_dir(repo_dir);
         push_cmd.arg("push");
