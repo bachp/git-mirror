@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.8] - 2022-12-13
+
+### Fixed
+
+- Fix missing `--version` flag
+
+### Changed
+
+- Remove docker builds. They are not working anymore and outdated.
+
 ## [0.14.7] - 2022-12-12
 
 ### Added
