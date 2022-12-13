@@ -29,5 +29,9 @@ junit-report = "0.8"
 clap = { version = "4", features = [ "derive", "cargo", "env" ]}
 thiserror = "1.0"
 
+[dev-dependencies]
+assert_cmd = "2.0.7"
+predicates = "2.1.4"
+
 [profile.release]
 lto = true

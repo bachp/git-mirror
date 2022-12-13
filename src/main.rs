@@ -32,7 +32,7 @@ enum Providers {
 
 /// command line options
 #[derive(Parser, Debug)]
-#[command(name = "git-mirror")]
+#[command(name = "git-mirror", version, about)]
 struct Opt {
     /// Provider to use for fetching repositories
     #[arg(
