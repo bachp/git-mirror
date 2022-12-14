@@ -116,9 +116,7 @@ impl GitWrapper for Git {
 
         if self.lfs_enabled {
             let mut lfs_fetch_cmd = self.git_base_cmd();
-            lfs_fetch_cmd
-                .args(["lfs", "fetch", "--all"])
-                .current_dir(repo_dir);
+            lfs_fetch_cmd.args(["lfs", "fetch"]).current_dir(repo_dir);
 
             self.run_cmd(lfs_fetch_cmd)
         } else {
@@ -144,9 +142,7 @@ impl GitWrapper for Git {
 
         if self.lfs_enabled {
             let mut lfs_fetch_cmd = self.git_base_cmd();
-            lfs_fetch_cmd
-                .args(["lfs", "fetch", "--all"])
-                .current_dir(repo_dir);
+            lfs_fetch_cmd.args(["lfs", "fetch"]).current_dir(repo_dir);
 
             self.run_cmd(lfs_fetch_cmd)
         } else {
