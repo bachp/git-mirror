@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.9] - 2022-12-16
+
+### Fixed
+
+- Don't run `git lfs fetch` with `--all` option to avoid fetching unnecessary artifacts.
+
 ## [0.14.8] - 2022-12-13
 
 ### Fixed
