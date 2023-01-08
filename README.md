@@ -47,6 +47,7 @@ A list of currently supported fields
 - `origin` Source repository to mirror from
 - `skip`   Temporarily exclude a project from syncing by adding `skip: true`
 - `destination` Reserved for future use
+- `lfs` Disable git lfs mirror for a specific repo with `lfs: false` (default is `true`), only relevant if git-mirror is started with `--lfs`
 - `refspec` Push only refspec. 
   Add the refspec list to use it. Any valid refspec is possible.
   E.g.

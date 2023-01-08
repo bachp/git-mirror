@@ -201,6 +201,7 @@ impl Provider for GitLab {
                         origin: desc.origin,
                         destination,
                         refspec: desc.refspec,
+                        lfs: desc.lfs,
                     };
                     mirrors.push(Ok(m));
                 }
