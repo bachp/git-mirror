@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.10] - 2023-01-09
+
+### Added
+
+- Add option to disable Git LFS by adding `lfs: false` to the description YAML.
+
 ## [0.14.9] - 2022-12-16
 
 ### Fixed

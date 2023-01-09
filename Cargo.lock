@@ -367,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "git-mirror"
-version = "0.14.9"
+version = "0.14.10"
 dependencies = [
  "assert_cmd",
  "clap",
