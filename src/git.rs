@@ -32,13 +32,14 @@ pub trait GitWrapper {
     /// Get the git version
     fn git_version(&self) -> Result<(), GitError>;
     fn git_lfs_version(&self) -> Result<(), GitError>;
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError>;
-    fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError>;
+    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError>;
+    fn git_update_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError>;
     fn git_push_mirror(
         &self,
         dest: &str,
         repo_dir: &Path,
         refspec: &Option<Vec<String>>,
+        lfs: bool,
     ) -> Result<(), GitError>;
 }
 
@@ -105,7 +106,7 @@ impl GitWrapper for Git {
         self.run_cmd(cmd)
     }
 
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError> {
+    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError> {
         let mut clone_cmd = self.git_base_cmd();
         clone_cmd
             .args(["clone", "--mirror"])
@@ -114,7 +115,7 @@ impl GitWrapper for Git {
 
         self.run_cmd(clone_cmd)?;
 
-        if self.lfs_enabled {
+        if self.lfs_enabled && lfs {
             let mut lfs_fetch_cmd = self.git_base_cmd();
             lfs_fetch_cmd.args(["lfs", "fetch"]).current_dir(repo_dir);
 
@@ -124,7 +125,7 @@ impl GitWrapper for Git {
         }
     }
 
-    fn git_update_mirror(&self, origin: &str, repo_dir: &Path) -> Result<(), GitError> {
+    fn git_update_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError> {
         let mut set_url_cmd = self.git_base_cmd();
         set_url_cmd
             .current_dir(repo_dir)
@@ -140,7 +141,7 @@ impl GitWrapper for Git {
 
         self.run_cmd(remote_update_cmd)?;
 
-        if self.lfs_enabled {
+        if self.lfs_enabled && lfs {
             let mut lfs_fetch_cmd = self.git_base_cmd();
             lfs_fetch_cmd.args(["lfs", "fetch"]).current_dir(repo_dir);
 
@@ -155,8 +156,9 @@ impl GitWrapper for Git {
         dest: &str,
         repo_dir: &Path,
         refspec: &Option<Vec<String>>,
+        lfs: bool,
     ) -> Result<(), GitError> {
-        if self.lfs_enabled {
+        if self.lfs_enabled && lfs {
             let mut lfs_install_cmd = self.git_base_cmd();
             lfs_install_cmd
                 .args(["lfs", "install"])

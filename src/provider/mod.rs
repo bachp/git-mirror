@@ -5,12 +5,13 @@
  */
 
 use thiserror::Error;
-/// A representation of a mirror job from orgin to destination
+/// A representation of a mirror job from origin to destination
 #[derive(Debug)]
 pub struct Mirror {
     pub origin: String,
     pub destination: String,
     pub refspec: Option<Vec<String>>,
+    pub lfs: bool,
 }
 
 /// An error occuring during mirror creation
@@ -18,8 +19,13 @@ pub struct Mirror {
 pub enum MirrorError {
     #[error("data store disconnected")]
     Description(String, serde_yaml::Error),
-    #[error("entry explicitly skiped")]
+    #[error("entry explicitly skipped")]
     Skip(String),
+}
+
+#[inline]
+pub fn bool_true() -> bool {
+    true
 }
 
 pub type MirrorResult = Result<Mirror, MirrorError>;
@@ -31,6 +37,8 @@ struct Desc {
     #[serde(default)]
     skip: bool,
     refspec: Option<Vec<String>>,
+    #[serde(default = "bool_true")]
+    lfs: bool,
 }
 
 pub trait Provider {

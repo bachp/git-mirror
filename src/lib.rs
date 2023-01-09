@@ -48,6 +48,7 @@ pub fn mirror_repo(
     origin: &str,
     destination: &str,
     refspec: &Option<Vec<String>>,
+    lfs: bool,
     opts: &MirrorOptions,
 ) -> Result<()> {
     if opts.dry_run {
@@ -68,11 +69,11 @@ pub fn mirror_repo(
     if origin_dir.is_dir() {
         info!("Local Update for {}", origin);
 
-        git.git_update_mirror(origin, &origin_dir)?;
+        git.git_update_mirror(origin, &origin_dir, lfs)?;
     } else if !origin_dir.exists() {
         info!("Local Checkout for {}", origin);
 
-        git.git_clone_mirror(origin, &origin_dir)?;
+        git.git_clone_mirror(origin, &origin_dir, lfs)?;
     } else {
         return Err(GitMirrorError::GenericError(format!(
             "Local origin dir is a file: {:?}",
@@ -82,7 +83,7 @@ pub fn mirror_repo(
 
     info!("Push to destination {}", destination);
 
-    git.git_push_mirror(destination, &origin_dir, refspec)?;
+    git.git_push_mirror(destination, &origin_dir, refspec, lfs)?;
 
     if opts.remove_workrepo {
         fs::remove_dir_all(&origin_dir).map_err(|e| {
@@ -166,7 +167,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                         }
                     };
                     trace!("Refspec used: {:?}", refspec);
-                    match mirror_repo(&x.origin, &x.destination, refspec, opts) {
+                    match mirror_repo(&x.origin, &x.destination, refspec, x.lfs, opts) {
                         Ok(_) => {
                             println!(
                                 "END(OK) {}/{} [{}]: {}",

@@ -94,6 +94,7 @@ impl Provider for GitHub {
                         origin: desc.origin,
                         destination,
                         refspec: desc.refspec,
+                        lfs: desc.lfs,
                     };
                     mirrors.push(Ok(m));
                 }
