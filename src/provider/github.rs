@@ -56,7 +56,7 @@ impl Provider for GitHub {
             .get(&url)
             .headers(headers)
             .send()
-            .map_err(|e| format!("Unable to connect to: {} ({})", url, e))?;
+            .map_err(|e| format!("Unable to connect to: {url} ({e})"))?;
 
         if res.status() != StatusCode::OK {
             if res.status() == StatusCode::UNAUTHORIZED {
@@ -77,7 +77,7 @@ impl Provider for GitHub {
         }
 
         let projects: Vec<Project> = serde_json::from_reader(res)
-            .map_err(|e| format!("Unable to parse response as JSON ({:?})", e))?;
+            .map_err(|e| format!("Unable to parse response as JSON ({e:?})"))?;
 
         let mut mirrors: Vec<MirrorResult> = Vec::new();
 

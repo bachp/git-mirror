@@ -53,14 +53,14 @@ impl GitLab {
         let mut results: Vec<T> = Vec::new();
 
         for page in 1..u32::MAX {
-            let url = format!("{}?per_page={}&page={}", url, PER_PAGE, page);
+            let url = format!("{url}?per_page={PER_PAGE}&page={page}");
             trace!("URL: {}", url);
 
             let res = client
                 .get(&url)
                 .headers(headers.clone())
                 .send()
-                .map_err(|e| format!("Unable to connect to: {} ({})", url, e))?;
+                .map_err(|e| format!("Unable to connect to: {url} ({e})"))?;
 
             debug!("HTTP Status Received: {}", res.status());
 
@@ -99,7 +99,7 @@ impl GitLab {
             };
 
             let results_page: Vec<T> = serde_json::from_reader(res)
-                .map_err(|e| format!("Unable to parse response as JSON ({})", e))?;
+                .map_err(|e| format!("Unable to parse response as JSON ({e})"))?;
 
             results.extend(results_page);
 

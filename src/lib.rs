@@ -76,8 +76,7 @@ pub fn mirror_repo(
         git.git_clone_mirror(origin, &origin_dir, lfs)?;
     } else {
         return Err(GitMirrorError::GenericError(format!(
-            "Local origin dir is a file: {:?}",
-            origin_dir
+            "Local origin dir is a file: {origin_dir:?}"
         )));
     }
 
@@ -201,7 +200,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 &name,
                                 OffsetDateTime::now_utc() - start,
                                 "sync error",
-                                &format!("{:?}", e),
+                                &format!("{e:?}"),
                             )
                             .build()
                         }
@@ -214,7 +213,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     match e {
                         MirrorError::Description(d, se) => {
                             error!("Error parsing YAML: {}, Error: {:?}", d, se);
-                            TestCaseBuilder::error("", duration, "parse error", &format!("{:?}", e))
+                            TestCaseBuilder::error("", duration, "parse error", &format!("{e:?}"))
                                 .build()
                         }
                         MirrorError::Skip(url) => {
@@ -302,7 +301,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
-        GitMirrorError::GenericError(format!("Unable to get mirror repos ({})", e))
+        GitMirrorError::GenericError(format!("Unable to get mirror repos ({e})"))
     })?;
 
     start_time
