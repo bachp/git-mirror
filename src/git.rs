@@ -168,7 +168,7 @@ impl GitWrapper for Git {
 
         let mut push_cmd = self.git_base_cmd();
         push_cmd.current_dir(repo_dir);
-        push_cmd.arg("push");
+        push_cmd.args(["push", "-f"]);
         if let Some(r) = &refspec {
             push_cmd.arg(dest);
             for spec in r.iter() {
