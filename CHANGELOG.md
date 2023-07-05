@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.11] - 2023-07-05
+
+### Changed
+
+- Use force push (`-f`) by default. This allows mirroring rebasing branches.
+- Update dependencies
+
 ## [0.14.10] - 2023-01-09
 
 ### Added
