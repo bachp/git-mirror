@@ -30,7 +30,7 @@ clap = { version = "4", features = [ "derive", "cargo", "env" ]}
 thiserror = "1.0"
 
 [dev-dependencies]
-assert_cmd = "2.0.12"
+assert_cmd = "2.0.13"
 predicates = "3.0.4"
 
 [profile.release]
