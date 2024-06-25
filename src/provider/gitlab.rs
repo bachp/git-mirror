@@ -4,9 +4,6 @@
  * SPDX-License-Identifier:     MIT
  */
 
-// Get Max of u32
-use std::u32;
-
 // Used for error and debug logging
 use log::{debug, error, trace, warn};
 
