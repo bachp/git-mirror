@@ -81,7 +81,7 @@ jobs:
       if: matrix.os == 'macos-latest'
 
     - name: Upload binaries to release
-      uses: svenstaro/upload-release-action@v1-release
+      uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }}
