@@ -57,20 +57,18 @@ jobs:
         command: build
         args: --release
 
-    - name: Get version tag
-      id: vars
-      run: echo ::set-output name=tag::${GITHUB_REF/refs\/tags\//}
-      shell: bash
+    - name: Inject enhanced GitHub environment variables
+      uses: rlespinasse/github-slug-action@v5
 
     - name: Create artifact directory
       run: mkdir artifacts
 
     - name: Create archive for Linux
-      run: 7z a -ttar -so -an ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }} | 7z a -si ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
+      run: 7z a -ttar -so -an ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }} | 7z a -si ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }}
       if: matrix.os == 'ubuntu-latest'
 
     - name: Create archive for Windows
-      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }}.exe ${{ env.RELEASE_ADDS }}
+      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }}.exe ${{ env.RELEASE_ADDS }}
       if: matrix.os == 'windows-latest'
 
     - name: Install p7zip
@@ -79,13 +77,49 @@ jobs:
       if: matrix.os == 'macos-latest'
 
     - name: Create archive for MacOS
-      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }}
+      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }}
       if: matrix.os == 'macos-latest'
 
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v1-release
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ./artifacts/${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
-        asset_name: ${{ env.RELEASE_BIN }}-${{ steps.vars.outputs.tag }}-${{ matrix.release_suffix }}
+        file: ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }}
+        asset_name: ${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG_URL }}-${{ matrix.release_suffix }}
         tag: ${{ github.ref }}
+
+  docker:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Inject enhanced GitHub environment variables
+        uses: rlespinasse/github-slug-action@v5
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ env.GITHUB_REF_POINT_SLUG_URL }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}

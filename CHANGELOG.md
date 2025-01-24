@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### Changed
+### Added
 
 ## [0.14.13] - 2025-01-24
+
+### Added
+
+- Provide container images under https://ghcr.io/bachp/git-mirror
+
+### Changed
 
 - Update dependencies
 
