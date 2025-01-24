@@ -48,14 +48,14 @@ A list of currently supported fields
 - `skip`   Temporarily exclude a project from syncing by adding `skip: true`
 - `destination` Reserved for future use
 - `lfs` Disable git lfs mirror for a specific repo with `lfs: false` (default is `true`), only relevant if git-mirror is started with `--lfs`
-- `refspec` Push only refspec. 
+- `refspec` Push only refspec.
   Add the refspec list to use it. Any valid refspec is possible.
   E.g.
   ```yaml
   refspec: ["master", "2.0", "+refs/tags/*:refs/tags/*"]
   ```
   See also https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
-  
+
   Note: If set, this field would override the default (global) refspec from the command line option `--refspec`, if specified. Multiple refs can be set by repeating the option.
 
 Any other fields are ignored
@@ -73,12 +73,12 @@ git-mirror -g mirror-test -p GitHub
 
 This has been tested against github.com but it might also work with on premise installations of GitHub.
 
-## Docker
+## Container
 
-There is also a docker image available. It can be used as follows:
+There is also a container image available. It can be used with docker or podman as follows:
 
 ```
-docker run -e PRIVATE_TOKEN="x" bachp/git-mirror git-mirror -g mirror -u http://gitlab.example.com
+docker run -e PRIVATE_TOKEN="x" ghcr.io/bachp/git-mirror git-mirror -g mirror -u http://gitlab.example.com
 ```
 
 ## Building & Installing
