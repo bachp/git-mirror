@@ -145,7 +145,11 @@ fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or(env_log_level)).init();
 
     // Run OpenSSL probing on all platforms even the ones not using it
-    openssl_probe::init_ssl_cert_env_vars();
+    // TODO: Switch to rustls-platform-verifier and rustls once it is supported by
+    // reqwest https://github.com/seanmonstar/reqwest/issues/2159
+    unsafe {
+        openssl_probe::init_openssl_env_vars();
+    };
 
     let provider: Box<dyn Provider> = match opt.provider {
         Providers::GitLab => Box::new(GitLab {
