@@ -7,9 +7,9 @@ pub enum GitMirrorError {
     #[error("Generic Mirror error: {0}")]
     GenericError(String),
     #[error("Git command execution failed: {0}")]
-    GitError(#[from] GitError),
+    GitError(#[from] Box<GitError>),
     #[error("Mirror extraction failed: {0}")]
-    MirrorError(#[from] MirrorError),
+    MirrorError(#[from] Box<MirrorError>),
     #[error("{0} sync tasks failed")]
     SyncError(usize),
 }

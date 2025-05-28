@@ -30,17 +30,27 @@ pub enum GitError {
 ///
 pub trait GitWrapper {
     /// Get the git version
-    fn git_version(&self) -> Result<(), GitError>;
-    fn git_lfs_version(&self) -> Result<(), GitError>;
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError>;
-    fn git_update_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError>;
+    fn git_version(&self) -> Result<(), Box<GitError>>;
+    fn git_lfs_version(&self) -> Result<(), Box<GitError>>;
+    fn git_clone_mirror(
+        &self,
+        origin: &str,
+        repo_dir: &Path,
+        lfs: bool,
+    ) -> Result<(), Box<GitError>>;
+    fn git_update_mirror(
+        &self,
+        origin: &str,
+        repo_dir: &Path,
+        lfs: bool,
+    ) -> Result<(), Box<GitError>>;
     fn git_push_mirror(
         &self,
         dest: &str,
         repo_dir: &Path,
         refspec: &Option<Vec<String>>,
         lfs: bool,
-    ) -> Result<(), GitError>;
+    ) -> Result<(), Box<GitError>>;
 }
 
 /// Git command line wrapper
@@ -63,7 +73,7 @@ impl Git {
         git
     }
 
-    fn run_cmd(&self, mut cmd: Command) -> Result<(), GitError> {
+    fn run_cmd(&self, mut cmd: Command) -> Result<(), Box<GitError>> {
         debug!("Run command: {:?}", cmd);
         match cmd.output() {
             Ok(o) => {
@@ -78,27 +88,27 @@ impl Git {
                 if o.status.success() {
                     Ok(())
                 } else {
-                    Err(GitError::GitCommandError {
+                    Err(Box::new(GitError::GitCommandError {
                         cmd,
                         code: o.status.code().unwrap_or_default(),
                         stderr,
-                    })
+                    }))
                 }
             }
-            Err(e) => Err(GitError::CommandError { cmd, err: e }),
+            Err(e) => Err(Box::new(GitError::CommandError { cmd, err: e })),
         }
     }
 }
 
 impl GitWrapper for Git {
-    fn git_version(&self) -> Result<(), GitError> {
+    fn git_version(&self) -> Result<(), Box<GitError>> {
         let mut cmd = self.git_base_cmd();
         cmd.arg("--version");
 
         self.run_cmd(cmd)
     }
 
-    fn git_lfs_version(&self) -> Result<(), GitError> {
+    fn git_lfs_version(&self) -> Result<(), Box<GitError>> {
         let mut cmd = self.git_base_cmd();
         cmd.arg("lfs");
         cmd.arg("version");
@@ -106,7 +116,12 @@ impl GitWrapper for Git {
         self.run_cmd(cmd)
     }
 
-    fn git_clone_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError> {
+    fn git_clone_mirror(
+        &self,
+        origin: &str,
+        repo_dir: &Path,
+        lfs: bool,
+    ) -> Result<(), Box<GitError>> {
         let mut clone_cmd = self.git_base_cmd();
         clone_cmd
             .args(["clone", "--mirror"])
@@ -125,7 +140,12 @@ impl GitWrapper for Git {
         }
     }
 
-    fn git_update_mirror(&self, origin: &str, repo_dir: &Path, lfs: bool) -> Result<(), GitError> {
+    fn git_update_mirror(
+        &self,
+        origin: &str,
+        repo_dir: &Path,
+        lfs: bool,
+    ) -> Result<(), Box<GitError>> {
         let mut set_url_cmd = self.git_base_cmd();
         set_url_cmd
             .current_dir(repo_dir)
@@ -157,7 +177,7 @@ impl GitWrapper for Git {
         repo_dir: &Path,
         refspec: &Option<Vec<String>>,
         lfs: bool,
-    ) -> Result<(), GitError> {
+    ) -> Result<(), Box<GitError>> {
         if self.lfs_enabled && lfs {
             let mut lfs_install_cmd = self.git_base_cmd();
             lfs_install_cmd
