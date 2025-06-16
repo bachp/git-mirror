@@ -12,14 +12,14 @@ use env_logger::Env;
 use log::{debug, error, info};
 
 // Used to do command line parsing
-use clap::{crate_name, crate_version};
 use clap::{ArgAction, Parser, ValueEnum};
+use clap::{crate_name, crate_version};
 use std::path::PathBuf;
 
 // Load the real functionality
+use git_mirror::MirrorOptions;
 use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
-use git_mirror::MirrorOptions;
 
 use std::process::exit;
 
@@ -111,6 +111,10 @@ struct Opt {
     /// Mirror lfs objects as well
     #[arg(long, default_value = "false")]
     lfs: bool,
+
+    /// Use Sentry DSN for error tracking
+    #[arg(long, env = "SENTRY_DSN")]
+    sentry_dsn: Option<String>,
 }
 
 impl From<Opt> for MirrorOptions {
@@ -130,10 +134,25 @@ impl From<Opt> for MirrorOptions {
     }
 }
 
+fn init_sentry(sentry_dsn: &str) {
+    let _guard = sentry::init((
+        sentry_dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            send_default_pii: true,
+            ..Default::default()
+        },
+    ));
+}
+
 fn main() {
     // Setup commandline parser
     let opt = Opt::parse();
     debug!("{:#?}", opt);
+
+    if opt.sentry_dsn.is_some() {
+        init_sentry(&opt.sentry_dsn.clone().unwrap());
+    }
 
     let env_log_level = match cmp::min(opt.verbose, 4) {
         4 => "git_mirror=trace",
