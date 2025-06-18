@@ -1,6 +1,6 @@
 [package]
 name = "git-mirror"
-version = "0.14.13"
+version = "0.15.0"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 description = "Sync between different git repositories."
 license = "MIT"
@@ -28,6 +28,7 @@ openssl-probe = "0.1"
 junit-report = "0.8"
 clap = { version = "4", features = [ "derive", "cargo", "env" ]}
 thiserror = "2.0"
+sentry = "0.39.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.17"

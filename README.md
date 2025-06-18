@@ -73,6 +73,13 @@ git-mirror -g mirror-test -p GitHub
 
 This has been tested against github.com but it might also work with on premise installations of GitHub.
 
+### Error tracking
+
+`git-mirror` can be instrumented with Sentry error reporting by specifying the `SENTRY_DSN`.
+This value can be retrieved from your Sentry instance.
+
+You can specify it as an argument or by setting the environment variable `SENTRY_DSN`.
+
 ## Container
 
 There is also a container image available. It can be used with docker or podman as follows:
