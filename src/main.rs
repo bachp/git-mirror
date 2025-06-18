@@ -12,14 +12,14 @@ use env_logger::Env;
 use log::{debug, error, info};
 
 // Used to do command line parsing
-use clap::{crate_name, crate_version};
 use clap::{ArgAction, Parser, ValueEnum};
+use clap::{crate_name, crate_version};
 use std::path::PathBuf;
 
 // Load the real functionality
+use git_mirror::MirrorOptions;
 use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
-use git_mirror::MirrorOptions;
 
 use std::process::exit;
 
