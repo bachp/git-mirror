@@ -189,7 +189,7 @@ impl GitWrapper for Git {
         let mut push_cmd = self.git_base_cmd();
         push_cmd.current_dir(repo_dir);
         // override the git lfs url when pushing, in case a .lfsconfig with a different URL exists
-        push_cmd.args(["-c", format!("lfs.url={}", dest)]);
+        push_cmd.args(["-c", &format!("lfs.url={}", &dest)]);
         push_cmd.args(["push", "-f"]);
         if let Some(r) = &refspec {
             push_cmd.arg(dest);
