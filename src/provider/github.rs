@@ -50,7 +50,7 @@ impl Provider for GitHub {
         headers.insert(ACCEPT, accept);
 
         let url = format!("{}/orgs/{}/repos", self.url, self.org);
-        trace!("URL: {}", url);
+        trace!("URL: {url}");
 
         let res = client
             .get(&url)

@@ -51,7 +51,7 @@ impl GitLab {
 
         for page in 1..u32::MAX {
             let url = format!("{url}?per_page={PER_PAGE}&page={page}");
-            trace!("URL: {}", url);
+            trace!("URL: {url}");
 
             let res = client
                 .get(&url)
@@ -89,7 +89,7 @@ impl GitLab {
                         trace!("No more pages, x-next-page-header empty.");
                         false
                     } else {
-                        trace!("Next page: {:?}", n);
+                        trace!("Next page: {n:?}");
                         true
                     }
                 }
@@ -155,7 +155,7 @@ impl Provider for GitLab {
                     headers.insert("PRIVATE-TOKEN", token);
                 }
                 Err(err) => {
-                    error!("Unable to parse PRIVATE_TOKEN: {}", err);
+                    error!("Unable to parse PRIVATE_TOKEN: {err}");
                 }
             }
         } else {
@@ -165,7 +165,7 @@ impl Provider for GitLab {
         let groups = if self.recursive {
             self.get_subgroups(&self.group, &client, &headers).or_else(
                 |e| -> Result<Vec<String>, String> {
-                    warn!("Unable to get subgroups: {}", e);
+                    warn!("Unable to get subgroups: {e}");
                     Ok(vec![self.group.clone()])
                 },
             )?

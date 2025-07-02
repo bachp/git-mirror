@@ -133,7 +133,7 @@ impl From<Opt> for MirrorOptions {
 fn main() {
     // Setup commandline parser
     let opt = Opt::parse();
-    debug!("{:#?}", opt);
+    debug!("{opt:#?}");
 
     let env_log_level = match cmp::min(opt.verbose, 4) {
         4 => "git_mirror=trace",
@@ -175,7 +175,7 @@ fn main() {
             info!("All done");
         }
         Err(e) => {
-            error!("Error occured: {}", e);
+            error!("Error occured: {e}");
             exit(e.into());
         }
     };

@@ -56,7 +56,7 @@ pub fn mirror_repo(
     }
 
     let origin_dir = Path::new(&opts.mirror_dir).join(slugify(origin));
-    debug!("Using origin dir: {0:?}", origin_dir);
+    debug!("Using origin dir: {origin_dir:?}");
 
     let git = Git::new(opts.git_executable.clone(), opts.mirror_lfs);
 
@@ -67,11 +67,11 @@ pub fn mirror_repo(
     }
 
     if origin_dir.is_dir() {
-        info!("Local Update for {}", origin);
+        info!("Local Update for {origin}");
 
         git.git_update_mirror(origin, &origin_dir, lfs)?;
     } else if !origin_dir.exists() {
-        info!("Local Checkout for {}", origin);
+        info!("Local Checkout for {origin}");
 
         git.git_clone_mirror(origin, &origin_dir, lfs)?;
     } else {
@@ -80,7 +80,7 @@ pub fn mirror_repo(
         )));
     }
 
-    info!("Push to destination {}", destination);
+    info!("Push to destination {destination}");
 
     git.git_push_mirror(destination, &origin_dir, refspec, lfs)?;
 
@@ -150,13 +150,13 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                         .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                     let refspec = match &x.refspec {
                         Some(r) => {
-                            debug!("Using repo specific refspec: {:?}", r);
+                            debug!("Using repo specific refspec: {r:?}");
                             &x.refspec
                         }
                         None => {
                             match opts.refspec.clone() {
                                 Some(r) => {
-                                    debug!("Using global custom refspec: {:?}", r);
+                                    debug!("Using global custom refspec: {r:?}");
                                 }
                                 None => {
                                     debug!("Using no custom refspec.");
@@ -165,7 +165,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                             &opts.refspec
                         }
                     };
-                    trace!("Refspec used: {:?}", refspec);
+                    trace!("Refspec used: {refspec:?}");
                     match mirror_repo(&x.origin, &x.destination, refspec, x.lfs, opts) {
                         Ok(_) => {
                             println!(
@@ -195,7 +195,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
                             proj_fail.with_label_values(&[&label]).inc();
-                            error!("Unable to sync repo {} ({})", name, e);
+                            error!("Unable to sync repo {name} ({e})");
                             TestCaseBuilder::error(
                                 &name,
                                 OffsetDateTime::now_utc() - start,
@@ -212,7 +212,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
 
                     match e {
                         MirrorError::Description(d, se) => {
-                            error!("Error parsing YAML: {}, Error: {:?}", d, se);
+                            error!("Error parsing YAML: {d}, Error: {se:?}");
                             TestCaseBuilder::error("", duration, "parse error", &format!("{e:?}"))
                                 .build()
                         }
