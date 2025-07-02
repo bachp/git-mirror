@@ -6,13 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.15] - 2025-07-02
+
+## Fixed
+
+- Properly pass git config for LFS to the git command line
+
 ## [0.14.14] - 2025-06-23
 
-### Fixed
+### Added
 
 - Override git lfs url in all cases when pushing to the destination, even when set via `.lfsconfig`
-
-### Added
 
 ## [0.14.13] - 2025-01-24
 
