@@ -4,8 +4,11 @@
  * SPDX-License-Identifier:     MIT
  */
 
+use std::io;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 use log::debug;
@@ -13,14 +16,19 @@ use log::debug;
 /// An error occuring during git command execution
 #[derive(Debug, Error)]
 pub enum GitError {
-    #[error("Command {cmd:?} failed with error: {err}")]
-    CommandError { cmd: Command, err: std::io::Error },
-    #[error("Command {cmd:?} failed with exit code: {code}, Stderr: {stderr}")]
+    #[error("Command {cmd_str} failed with error: {err}")]
+    CommandError {
+        cmd_str: String,
+        err: std::io::Error,
+    },
+    #[error("Command {cmd_str} failed with exit code: {code}, Stderr: {stderr}")]
     GitCommandError {
         code: i32,
         stderr: String,
-        cmd: Command,
+        cmd_str: String,
     },
+    #[error("Command {cmd_str} timed out after {timeout_secs} seconds")]
+    CommandTimeout { cmd_str: String, timeout_secs: u64 },
 }
 
 /// Common interface to different git backends
@@ -57,13 +65,15 @@ pub trait GitWrapper {
 pub struct Git {
     executable: String,
     lfs_enabled: bool,
+    timeout: Option<Duration>,
 }
 
 impl Git {
-    pub fn new(executable: String, lfs_enabled: bool) -> Git {
+    pub fn new(executable: String, lfs_enabled: bool, timeout: Option<Duration>) -> Git {
         Git {
             executable,
             lfs_enabled,
+            timeout,
         }
     }
 
@@ -74,8 +84,15 @@ impl Git {
     }
 
     fn run_cmd(&self, mut cmd: Command) -> Result<(), Box<GitError>> {
-        debug!("Run command: {cmd:?}");
-        match cmd.output() {
+        let cmd_str: String = format!("{:?}", cmd);
+
+        let result = if let Some(timeout) = self.timeout {
+            self.run_cmd_with_timeout(cmd, timeout)
+        } else {
+            cmd.output()
+        };
+
+        match result {
             Ok(o) => {
                 let stdout = String::from_utf8_lossy(&o.stdout).to_string();
                 if !stdout.is_empty() {
@@ -89,13 +106,44 @@ impl Git {
                     Ok(())
                 } else {
                     Err(Box::new(GitError::GitCommandError {
-                        cmd,
+                        cmd_str,
                         code: o.status.code().unwrap_or_default(),
                         stderr,
                     }))
                 }
             }
-            Err(e) => Err(Box::new(GitError::CommandError { cmd, err: e })),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::TimedOut {
+                    Err(Box::new(GitError::CommandTimeout {
+                        cmd_str,
+                        timeout_secs: self.timeout.unwrap_or_default().as_secs(),
+                    }))
+                } else {
+                    Err(Box::new(GitError::CommandError { cmd_str, err: e }))
+                }
+            }
+        }
+    }
+
+    fn run_cmd_with_timeout(&self, mut cmd: Command, timeout: Duration) -> io::Result<Output> {
+        let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+        let start = Instant::now();
+
+        loop {
+            if let Some(status) = child.try_wait()? {
+                let output = child.wait_with_output()?;
+                return match status.success() {
+                    true => Ok(output),
+                    false => Err(io::Error::other(
+                        String::from_utf8_lossy(&output.stderr).to_string(),
+                    )),
+                };
+            }
+            if start.elapsed() > timeout {
+                child.kill()?;
+                return Err(io::Error::new(io::ErrorKind::TimedOut, "error"));
+            }
+            thread::sleep(Duration::from_millis(200));
         }
     }
 }

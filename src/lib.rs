@@ -12,6 +12,7 @@ use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Duration;
 
 // File locking
 use fs2::FileExt;
@@ -58,7 +59,11 @@ pub fn mirror_repo(
     let origin_dir = Path::new(&opts.mirror_dir).join(slugify(origin));
     debug!("Using origin dir: {origin_dir:?}");
 
-    let git = Git::new(opts.git_executable.clone(), opts.mirror_lfs);
+    let git = Git::new(
+        opts.git_executable.clone(),
+        opts.mirror_lfs,
+        opts.git_timeout,
+    );
 
     git.git_version()?;
 
@@ -256,6 +261,7 @@ pub struct MirrorOptions {
     pub remove_workrepo: bool,
     pub fail_on_sync_error: bool,
     pub mirror_lfs: bool,
+    pub git_timeout: Option<Duration>,
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()> {

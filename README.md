@@ -32,6 +32,16 @@ git-mirror -g mirror-test -c 8
 
 This will execute at most 8 sync jobs in parallel
 
+### Setting a timeout for Git operations
+
+`git-mirror` allows to set a timeout for underlying `git` invocations. This can be controlled via the `--git-timeout <timeout_seconds>` flag.
+
+```sh
+git-mirror -g mirror-test --git-timeout 120
+```
+
+This will limit any `git` invocation to 120 seconds. If a `git` command reaches this threshold, the repository will be aborted and the next job in line will be taken up by the worker.
+
 ### Description format
 
 For `git-mirror` to mirror a repository it needs to know where to sync from.
