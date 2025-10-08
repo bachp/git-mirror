@@ -7,11 +7,11 @@
 use std::io;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use thiserror::Error;
 
 use log::debug;
+use wait_timeout::ChildExt;
 
 /// An error occuring during git command execution
 #[derive(Debug, Error)]
@@ -27,8 +27,8 @@ pub enum GitError {
         stderr: String,
         cmd_str: String,
     },
-    #[error("Command {cmd_str} timed out after {timeout_secs} seconds")]
-    CommandTimeout { cmd_str: String, timeout_secs: u64 },
+    #[error("Command {cmd_str} timed out after {timeout:?}")]
+    CommandTimeout { cmd_str: String, timeout: Duration },
 }
 
 /// Common interface to different git backends
@@ -86,10 +86,9 @@ impl Git {
     fn run_cmd(&self, mut cmd: Command) -> Result<(), Box<GitError>> {
         let cmd_str: String = format!("{:?}", cmd);
 
-        let result = if let Some(timeout) = self.timeout {
-            self.run_cmd_with_timeout(cmd, timeout)
-        } else {
-            cmd.output()
+        let result = match self.timeout {
+            Some(timeout) => self.run_cmd_with_timeout(cmd, timeout),
+            None => cmd.output(),
         };
 
         match result {
@@ -116,7 +115,7 @@ impl Git {
                 if e.kind() == io::ErrorKind::TimedOut {
                     Err(Box::new(GitError::CommandTimeout {
                         cmd_str,
-                        timeout_secs: self.timeout.unwrap_or_default().as_secs(),
+                        timeout: self.timeout.unwrap(),
                     }))
                 } else {
                     Err(Box::new(GitError::CommandError { cmd_str, err: e }))
@@ -127,23 +126,16 @@ impl Git {
 
     fn run_cmd_with_timeout(&self, mut cmd: Command, timeout: Duration) -> io::Result<Output> {
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
-        let start = Instant::now();
 
-        loop {
-            if let Some(status) = child.try_wait()? {
-                let output = child.wait_with_output()?;
-                return match status.success() {
-                    true => Ok(output),
-                    false => Err(io::Error::other(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    )),
-                };
-            }
-            if start.elapsed() > timeout {
+        match child.wait_timeout(timeout)? {
+            Some(_) => Ok(child.wait_with_output()?),
+            None => {
                 child.kill()?;
-                return Err(io::Error::new(io::ErrorKind::TimedOut, "error"));
+                Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "git command timed out",
+                ))
             }
-            thread::sleep(Duration::from_millis(200));
         }
     }
 }
