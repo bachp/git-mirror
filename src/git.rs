@@ -16,11 +16,8 @@ use wait_timeout::ChildExt;
 /// An error occuring during git command execution
 #[derive(Debug, Error)]
 pub enum GitError {
-    #[error("Command {cmd_str} failed with error: {err}")]
-    CommandError {
-        cmd_str: String,
-        err: std::io::Error,
-    },
+    #[error("Command {cmd_str} failed with system error: {err}")]
+    CommandError { cmd_str: String, err: io::Error },
     #[error("Command {cmd_str} failed with exit code: {code}, Stderr: {stderr}")]
     GitCommandError {
         code: i32,
@@ -28,7 +25,28 @@ pub enum GitError {
         cmd_str: String,
     },
     #[error("Command {cmd_str} timed out after {timeout:?}")]
-    CommandTimeout { cmd_str: String, timeout: Duration },
+    GitCommandTimeout { cmd_str: String, timeout: Duration },
+}
+
+#[derive(Debug, Error)]
+pub enum CommandExecutionError {
+    #[error("Unknown system IO error: {0}")]
+    SystemIOError(#[from] io::Error),
+    #[error("Timeout has been reached: {0:?}")]
+    TimeoutReachedError(Duration),
+}
+
+impl From<(CommandExecutionError, String)> for GitError {
+    fn from(value: (CommandExecutionError, String)) -> Self {
+        match value {
+            (CommandExecutionError::SystemIOError(err), cmd_str) => {
+                GitError::CommandError { cmd_str, err }
+            }
+            (CommandExecutionError::TimeoutReachedError(timeout), cmd_str) => {
+                GitError::GitCommandTimeout { cmd_str, timeout }
+            }
+        }
+    }
 }
 
 /// Common interface to different git backends
@@ -84,11 +102,11 @@ impl Git {
     }
 
     fn run_cmd(&self, mut cmd: Command) -> Result<(), Box<GitError>> {
-        let cmd_str: String = format!("{:?}", cmd);
+        let cmd_str = format!("{:?}", cmd);
 
-        let result = match self.timeout {
+        let result: Result<Output, CommandExecutionError> = match self.timeout {
             Some(timeout) => self.run_cmd_with_timeout(cmd, timeout),
-            None => cmd.output(),
+            None => cmd.output().map_err(From::from),
         };
 
         match result {
@@ -111,30 +129,22 @@ impl Git {
                     }))
                 }
             }
-            Err(e) => {
-                if e.kind() == io::ErrorKind::TimedOut {
-                    Err(Box::new(GitError::CommandTimeout {
-                        cmd_str,
-                        timeout: self.timeout.unwrap(),
-                    }))
-                } else {
-                    Err(Box::new(GitError::CommandError { cmd_str, err: e }))
-                }
-            }
+            Err(err) => Err(Box::new((err, cmd_str).into())),
         }
     }
 
-    fn run_cmd_with_timeout(&self, mut cmd: Command, timeout: Duration) -> io::Result<Output> {
+    fn run_cmd_with_timeout(
+        &self,
+        mut cmd: Command,
+        timeout: Duration,
+    ) -> Result<Output, CommandExecutionError> {
         let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
 
         match child.wait_timeout(timeout)? {
             Some(_) => Ok(child.wait_with_output()?),
             None => {
                 child.kill()?;
-                Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "git command timed out",
-                ))
+                Err(CommandExecutionError::TimeoutReachedError(timeout))
             }
         }
     }
