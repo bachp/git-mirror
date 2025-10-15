@@ -6,6 +6,7 @@
 
 use std::cmp;
 use std::env;
+use std::time::Duration;
 
 // Used for error and debug logging
 use env_logger::Env;
@@ -111,6 +112,15 @@ struct Opt {
     /// Mirror lfs objects as well
     #[arg(long, default_value = "false")]
     lfs: bool,
+
+    /// Timeout in seconds for individual git operations
+    #[arg(long, value_parser = parse_duration)]
+    git_timeout: Option<Duration>,
+}
+
+fn parse_duration(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+    let seconds = arg.parse()?;
+    Ok(Duration::from_secs(seconds))
 }
 
 impl From<Opt> for MirrorOptions {
@@ -126,6 +136,7 @@ impl From<Opt> for MirrorOptions {
             remove_workrepo: opt.remove_workrepo,
             fail_on_sync_error: opt.fail_on_sync_error,
             mirror_lfs: opt.lfs,
+            git_timeout: opt.git_timeout,
         }
     }
 }

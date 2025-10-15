@@ -4,23 +4,49 @@
  * SPDX-License-Identifier:     MIT
  */
 
+use std::io;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
+use std::time::Duration;
 use thiserror::Error;
 
 use log::debug;
+use wait_timeout::ChildExt;
 
 /// An error occuring during git command execution
 #[derive(Debug, Error)]
 pub enum GitError {
-    #[error("Command {cmd:?} failed with error: {err}")]
-    CommandError { cmd: Command, err: std::io::Error },
-    #[error("Command {cmd:?} failed with exit code: {code}, Stderr: {stderr}")]
+    #[error("Command {cmd_str} failed with system error: {err}")]
+    CommandError { cmd_str: String, err: io::Error },
+    #[error("Command {cmd_str} failed with exit code: {code}, Stderr: {stderr}")]
     GitCommandError {
         code: i32,
         stderr: String,
-        cmd: Command,
+        cmd_str: String,
     },
+    #[error("Command {cmd_str} timed out after {timeout:?}")]
+    GitCommandTimeout { cmd_str: String, timeout: Duration },
+}
+
+#[derive(Debug, Error)]
+pub enum CommandExecutionError {
+    #[error("Unknown system IO error: {0}")]
+    SystemIOError(#[from] io::Error),
+    #[error("Timeout has been reached: {0:?}")]
+    TimeoutReachedError(Duration),
+}
+
+impl From<(CommandExecutionError, String)> for GitError {
+    fn from(value: (CommandExecutionError, String)) -> Self {
+        match value {
+            (CommandExecutionError::SystemIOError(err), cmd_str) => {
+                GitError::CommandError { cmd_str, err }
+            }
+            (CommandExecutionError::TimeoutReachedError(timeout), cmd_str) => {
+                GitError::GitCommandTimeout { cmd_str, timeout }
+            }
+        }
+    }
 }
 
 /// Common interface to different git backends
@@ -57,13 +83,15 @@ pub trait GitWrapper {
 pub struct Git {
     executable: String,
     lfs_enabled: bool,
+    timeout: Option<Duration>,
 }
 
 impl Git {
-    pub fn new(executable: String, lfs_enabled: bool) -> Git {
+    pub fn new(executable: String, lfs_enabled: bool, timeout: Option<Duration>) -> Git {
         Git {
             executable,
             lfs_enabled,
+            timeout,
         }
     }
 
@@ -74,8 +102,14 @@ impl Git {
     }
 
     fn run_cmd(&self, mut cmd: Command) -> Result<(), Box<GitError>> {
-        debug!("Run command: {cmd:?}");
-        match cmd.output() {
+        let cmd_str = format!("{:?}", cmd);
+
+        let result: Result<Output, CommandExecutionError> = match self.timeout {
+            Some(timeout) => self.run_cmd_with_timeout(cmd, timeout),
+            None => cmd.output().map_err(From::from),
+        };
+
+        match result {
             Ok(o) => {
                 let stdout = String::from_utf8_lossy(&o.stdout).to_string();
                 if !stdout.is_empty() {
@@ -89,13 +123,29 @@ impl Git {
                     Ok(())
                 } else {
                     Err(Box::new(GitError::GitCommandError {
-                        cmd,
+                        cmd_str,
                         code: o.status.code().unwrap_or_default(),
                         stderr,
                     }))
                 }
             }
-            Err(e) => Err(Box::new(GitError::CommandError { cmd, err: e })),
+            Err(err) => Err(Box::new((err, cmd_str).into())),
+        }
+    }
+
+    fn run_cmd_with_timeout(
+        &self,
+        mut cmd: Command,
+        timeout: Duration,
+    ) -> Result<Output, CommandExecutionError> {
+        let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+
+        match child.wait_timeout(timeout)? {
+            Some(_) => Ok(child.wait_with_output()?),
+            None => {
+                child.kill()?;
+                Err(CommandExecutionError::TimeoutReachedError(timeout))
+            }
         }
     }
 }
