@@ -1,6 +1,6 @@
 [package]
 name = "git-mirror"
-version = "0.14.15"
+version = "0.14.16"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 description = "Sync between different git repositories."
 license = "MIT"

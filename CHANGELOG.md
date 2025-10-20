@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.14.15] - 2025-10-20
+## [0.14.16] - 2025-10-20
 
 ### Added
 
 - Add `--git-timeout <timeout_seconds>` command line flag to kill git commands after a specified time.
+
+## [0.14.15] - 2025-07-02
+
+## Fixed
+
+- Properly pass git config for LFS to the git command line
 
 ## [0.14.14] - 2025-06-23
 
