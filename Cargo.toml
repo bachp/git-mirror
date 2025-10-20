@@ -1,6 +1,6 @@
 [package]
 name = "git-mirror"
-version = "0.14.14"
+version = "0.14.15"
 authors = ["Pascal Bach <pascal.bach@nextrem.ch>"]
 description = "Sync between different git repositories."
 license = "MIT"
@@ -12,22 +12,22 @@ readme="README.md"
 [features]
 
 [dependencies]
-time = "0.3"
-log = "0.4"
-env_logger = "0.11"
-slug = "0.1"
-rayon = "1.11"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
-serde_yaml = "0.9"
-fs2 = "0.4"
-prometheus = "0.14"
-reqwest = {version = "0.12", features = ["native-tls-vendored", "blocking"] }
-openssl-probe = "0.1"
-junit-report = "0.8"
-clap = { version = "4", features = [ "derive", "cargo", "env" ]}
-thiserror = "2.0"
+time = "0.3.44"
+log = "0.4.28"
+env_logger = "0.11.8"
+slug = "0.1.6"
+rayon = "1.11.0"
+serde = "1.0.228"
+serde_derive = "1.0.228"
+serde_json = "1.0.145"
+serde_yaml = "0.9.34-deprecated"
+fs2 = "0.4.3"
+prometheus = "0.14.0"
+reqwest = {version = "0.12.24", features = ["native-tls-vendored", "blocking"] }
+openssl-probe = "0.1.6"
+junit-report = "0.8.3"
+clap = { version = "4.5.50", features = [ "derive", "cargo", "env" ]}
+thiserror = "2.0.17"
 wait-timeout = "0.2.1"
 
 [dev-dependencies]

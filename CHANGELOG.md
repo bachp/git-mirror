@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.15] - 2025-10-20
+
 ### Added
 
 - Add `--git-timeout <timeout_seconds>` command line flag to kill git commands after a specified time.
