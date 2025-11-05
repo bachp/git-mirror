@@ -41,7 +41,7 @@ use prometheus::{Encoder, TextEncoder};
 
 use provider::{MirrorError, MirrorResult, Provider};
 
-use git::{Git, GitWrapper};
+use git::{Git, GitError, GitWrapper};
 
 use error::{GitMirrorError, Result};
 
@@ -114,6 +114,8 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
     let proj_skip =
         register_gauge_vec!("git_mirror_skip", "Skipped projects", &["mirror"]).unwrap();
     let proj_fail = register_gauge_vec!("git_mirror_fail", "Failed projects", &["mirror"]).unwrap();
+    let proj_timeout =
+        register_gauge_vec!("git_mirror_timeout", "Timed-out projects", &["mirror"]).unwrap();
     let proj_ok = register_gauge_vec!("git_mirror_ok", "OK projects", &["mirror"]).unwrap();
     let proj_start = register_gauge_vec!(
         "git_mirror_project_start",
@@ -140,6 +142,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                     let name = format!("{} -> {}", x.origin, x.destination);
                     let proj_fail = proj_fail.clone();
                     let proj_ok = proj_ok.clone();
+                    let proj_timeout = proj_timeout.clone();
                     let proj_start = proj_start.clone();
                     let proj_end = proj_end.clone();
                     let label = label.to_string();
@@ -199,6 +202,13 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
                             proj_end
                                 .with_label_values(&[&x.origin, &x.destination, &label])
                                 .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
+                            if matches!(
+                                &e,
+                                GitMirrorError::GitError(inner)
+                                if matches!(**inner, GitError::GitCommandTimeout { .. })
+                            ) {
+                                proj_timeout.with_label_values(&[&label]).inc();
+                            }
                             proj_fail.with_label_values(&[&label]).inc();
                             error!("Unable to sync repo {name} ({e})");
                             TestCaseBuilder::error(

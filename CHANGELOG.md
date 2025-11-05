@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Add a new `git_mirror_timeout` gauge metric to track how many projects run into a timeout.
+
 ## [0.14.16] - 2025-10-20
 
 ### Added
