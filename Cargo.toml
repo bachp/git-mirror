@@ -23,8 +23,7 @@ serde_json = "1.0.148"
 serde_yaml = "0.9.34-deprecated"
 fs2 = "0.4.3"
 prometheus = "0.14.0"
-reqwest = {version = "0.13.1", features = ["native-tls-vendored", "blocking"] }
-openssl-probe = "0.1.6"
+reqwest = {version = "0.13.1", features = ["blocking"] }
 junit-report = "0.8.3"
 clap = { version = "4.5.53", features = [ "derive", "cargo", "env" ]}
 thiserror = "2.0.17"
