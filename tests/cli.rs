@@ -1,11 +1,10 @@
-use assert_cmd::prelude::*; // Add methods on commands
+use assert_cmd::cargo;
 use clap::{crate_name, crate_version};
-use predicates::prelude::*; // Used for writing assertions
-use std::process::Command; // Run programs
+use predicates::prelude::*; // Used for writing assertions // Run programs
 
 #[test]
 fn version_flag_working() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("git-mirror")?;
+    let mut cmd = cargo::cargo_bin_cmd!("git-mirror");
 
     cmd.arg("--version");
 
