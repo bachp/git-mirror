@@ -26,7 +26,7 @@ prometheus = "0.14.0"
 reqwest = {version = "0.13.1", features = ["blocking"] }
 junit-report = "0.8.3"
 clap = { version = "4.5.54", features = [ "derive", "cargo", "env" ]}
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 wait-timeout = "0.2.1"
 
 [dev-dependencies]
