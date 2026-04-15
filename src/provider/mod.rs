@@ -32,13 +32,13 @@ pub type MirrorResult = Result<Mirror, MirrorError>;
 
 /// A structured description
 #[derive(Deserialize, Debug)]
-struct Desc {
-    origin: String,
+pub struct Desc {
+    pub origin: String,
     #[serde(default)]
-    skip: bool,
-    refspec: Option<Vec<String>>,
+    pub skip: bool,
+    pub refspec: Option<Vec<String>>,
     #[serde(default = "bool_true")]
-    lfs: bool,
+    pub lfs: bool,
 }
 
 pub trait Provider {
