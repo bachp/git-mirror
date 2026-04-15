@@ -5,7 +5,7 @@
  */
 
 pub mod error;
-mod git;
+pub mod git;
 pub mod provider;
 
 use std::fs;
