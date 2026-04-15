@@ -2,7 +2,7 @@ on:
   push:
     # Sequence of patterns matched against refs/tags
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
 
 name: Release
 
@@ -15,7 +15,6 @@ env:
   # Start relative paths with a dot if you don't want
   # paths to be preserved. Use "/" as a delimiter.
   RELEASE_ADDS: README.md LICENSE
-
 
 jobs:
   build:
@@ -40,53 +39,53 @@ jobs:
             release_suffix: windows-x86_64.zip
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-        components: clippy
+      - name: Setup rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
 
-    - name: Build release binary
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
+      - name: Build release binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
-    - name: Inject enhanced GitHub environment variables
-      uses: rlespinasse/github-slug-action@v5
+      - name: Inject enhanced GitHub environment variables
+        uses: rlespinasse/github-slug-action@v5
 
-    - name: Create artifact directory
-      run: mkdir artifacts
+      - name: Create artifact directory
+        run: mkdir artifacts
 
-    - name: Create archive for Linux
-      run: 7z a -ttar -so -an ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }} | 7z a -si ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
-      if: matrix.os == 'ubuntu-latest'
+      - name: Create archive for Linux
+        run: 7z a -ttar -so -an ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }} | 7z a -si ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
+        if: matrix.os == 'ubuntu-latest'
 
-    - name: Create archive for Windows
-      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }}.exe ${{ env.RELEASE_ADDS }}
-      if: matrix.os == 'windows-latest'
+      - name: Create archive for Windows
+        run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }}.exe ${{ env.RELEASE_ADDS }}
+        if: matrix.os == 'windows-latest'
 
-    - name: Install p7zip
-      # 7Zip not available on MacOS, install p7zip via homebrew.
-      run: brew install p7zip
-      if: matrix.os == 'macos-latest'
+      - name: Install p7zip
+        # 7Zip not available on MacOS, install p7zip via homebrew.
+        run: brew install p7zip
+        if: matrix.os == 'macos-latest'
 
-    - name: Create archive for MacOS
-      run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }}
-      if: matrix.os == 'macos-latest'
+      - name: Create archive for MacOS
+        run: 7z a -tzip ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }} ./target/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_ADDS }}
+        if: matrix.os == 'macos-latest'
 
-    - name: Upload binaries to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
-        asset_name: ${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
-        tag: ${{ github.ref }}
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./artifacts/${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
+          asset_name: ${{ env.RELEASE_BIN }}-${{ env.GITHUB_REF_POINT_SLUG }}-${{ matrix.release_suffix }}
+          tag: ${{ github.ref }}
 
   docker:
     name: Build and push Docker image
@@ -123,3 +122,16 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repositoryUrl }}
             org.opencontainers.image.revision=${{ github.sha }}
+
+  publish:
+    runs-on: ubuntu-latest
+    environment: release # Optional: for enhanced security
+    permissions:
+      id-token: write # Required for OIDC token exchange
+    steps:
+      - uses: actions/checkout@v6
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
