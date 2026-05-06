@@ -188,10 +188,26 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::Opt;
+    use std::time::Duration;
 
     #[test]
     fn verify_app() {
         use clap::CommandFactory;
         Opt::command().debug_assert()
+    }
+
+    #[test]
+    fn test_parse_duration_valid() {
+        use super::parse_duration;
+        assert_eq!(parse_duration("0").unwrap(), Duration::from_secs(0));
+        assert_eq!(parse_duration("30").unwrap(), Duration::from_secs(30));
+        assert_eq!(parse_duration("3600").unwrap(), Duration::from_secs(3600));
+    }
+
+    #[test]
+    fn test_parse_duration_invalid() {
+        use super::parse_duration;
+        assert!(parse_duration("not_a_number").is_err());
+        assert!(parse_duration("").is_err());
     }
 }

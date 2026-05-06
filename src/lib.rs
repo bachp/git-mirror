@@ -104,10 +104,14 @@ pub fn mirror_repo(
 
 fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestSuite {
     // Give the work to the worker pool
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(opts.worker_count)
-        .build_global()
-        .unwrap();
+    use std::sync::Once;
+    static INIT_RAYON: Once = Once::new();
+    INIT_RAYON.call_once(|| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(opts.worker_count)
+            .build_global()
+            .unwrap();
+    });
 
     let proj_total =
         register_gauge_vec!("git_mirror_total", "Total projects", &["mirror"]).unwrap();
@@ -361,4 +365,71 @@ fn write_junit_report(f: &Path, ts: TestSuite) {
     let report = ReportBuilder::default().add_testsuite(ts).build();
     let mut file = File::create(f).unwrap();
     report.write_xml(&mut file).unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    struct MockProvider {
+        label: String,
+        repos: std::cell::RefCell<Vec<MirrorResult>>,
+    }
+
+    impl Provider for MockProvider {
+        fn get_mirror_repos(&self) -> std::result::Result<Vec<MirrorResult>, String> {
+            let mut v = self.repos.borrow_mut();
+            let mut result = Vec::new();
+            std::mem::swap(&mut result, &mut *v);
+            Ok(result)
+        }
+        fn get_label(&self) -> String {
+            self.label.clone()
+        }
+    }
+
+    fn default_opts(mirror_dir: PathBuf) -> MirrorOptions {
+        MirrorOptions {
+            mirror_dir,
+            dry_run: false,
+            metrics_file: None,
+            junit_file: None,
+            worker_count: 1,
+            git_executable: "git".to_string(),
+            refspec: None,
+            remove_workrepo: false,
+            fail_on_sync_error: false,
+            mirror_lfs: false,
+            git_timeout: None,
+        }
+    }
+
+    #[test]
+    fn test_mirror_repo_dry_run() {
+        let dir = TempDir::new().unwrap();
+        let opts = MirrorOptions {
+            mirror_dir: dir.path().to_path_buf(),
+            dry_run: true,
+            ..default_opts(dir.path().to_path_buf())
+        };
+        let result = mirror_repo("https://example.com/a", "https://example.com/b", &None, false, &opts);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mirror_repo_local_dir_is_file() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("origin");
+        std::fs::write(&file_path, "x").unwrap();
+        let opts = MirrorOptions {
+            mirror_dir: dir.path().to_path_buf(),
+            dry_run: false,
+            ..default_opts(dir.path().to_path_buf())
+        };
+        let result = mirror_repo("origin", "dest", &None, false, &opts);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Local origin dir is a file"));
+    }
 }

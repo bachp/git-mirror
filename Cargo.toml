@@ -32,6 +32,8 @@ wait-timeout = "0.2.1"
 [dev-dependencies]
 assert_cmd = "2.2.1"
 predicates = "3.1.4"
+tempfile = "3.19.1"
+mockito = "1.7.0"
 
 [profile.release]
 lto = true

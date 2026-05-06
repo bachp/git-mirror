@@ -211,3 +211,236 @@ impl Provider for GitLab {
         Ok(mirrors)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito::Server;
+
+    fn create_gitlab(server_url: String, recursive: bool) -> GitLab {
+        GitLab {
+            url: server_url,
+            group: "mygroup".to_string(),
+            use_http: false,
+            private_token: None,
+            recursive,
+        }
+    }
+
+    #[test]
+    fn test_gitlab_get_label() {
+        let gitlab = create_gitlab("https://gitlab.example.com".to_string(), false);
+        assert_eq!(gitlab.get_label(), "https://gitlab.example.com/mygroup");
+    }
+
+    #[test]
+    fn test_get_mirror_repos_success() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo.git","web_url":"https://gitlab.example.com/mygroup/repo","ssh_url_to_repo":"git@gitlab.com:mygroup/repo.git","http_url_to_repo":"https://gitlab.com/mygroup/repo.git"}]"#,
+            )
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 1);
+        let repo = result[0].as_ref().unwrap();
+        assert_eq!(repo.origin, "https://github.com/test/repo.git");
+        assert_eq!(repo.destination, "git@gitlab.com:mygroup/repo.git");
+        assert!(repo.lfs);
+    }
+
+    #[test]
+    fn test_get_mirror_repos_skip() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo.git\nskip: true\n","web_url":"https://gitlab.example.com/mygroup/repo","ssh_url_to_repo":"git@gitlab.com:mygroup/repo.git","http_url_to_repo":"https://gitlab.com/mygroup/repo.git"}]"#,
+            )
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 1);
+        assert!(result[0].is_err());
+        assert!(matches!(result[0], Err(MirrorError::Skip(_))));
+    }
+
+    #[test]
+    fn test_get_mirror_repos_parse_error() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"not valid yaml {{{","web_url":"https://gitlab.example.com/mygroup/repo","ssh_url_to_repo":"git@gitlab.com:mygroup/repo.git","http_url_to_repo":"https://gitlab.com/mygroup/repo.git"}]"#,
+            )
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 1);
+        assert!(result[0].is_err());
+        assert!(matches!(result[0], Err(MirrorError::Description(_, _))));
+    }
+
+    #[test]
+    fn test_get_mirror_repos_unauthorized() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(401)
+            .with_header("content-type", "application/json")
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("unautorized"));
+    }
+
+    #[test]
+    fn test_get_mirror_repos_invalid_status() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(500)
+            .with_header("content-type", "application/json")
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("invalid status"));
+    }
+
+    #[test]
+    fn test_get_mirror_repos_pagination() {
+        let mut server = Server::new();
+        let _m1 = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "2")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo1.git","web_url":"https://gitlab.example.com/mygroup/repo1","ssh_url_to_repo":"git@gitlab.com:mygroup/repo1.git","http_url_to_repo":"https://gitlab.com/mygroup/repo1.git"}]"#,
+            )
+            .create();
+        let _m2 = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=2")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo2.git","web_url":"https://gitlab.example.com/mygroup/repo2","ssh_url_to_repo":"git@gitlab.com:mygroup/repo2.git","http_url_to_repo":"https://gitlab.com/mygroup/repo2.git"}]"#,
+            )
+            .create();
+
+        let gitlab = create_gitlab(server.url(), false);
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_get_mirror_repos_http_destination() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo.git","web_url":"https://gitlab.example.com/mygroup/repo","ssh_url_to_repo":"git@gitlab.com:mygroup/repo.git","http_url_to_repo":"https://gitlab.com/mygroup/repo.git"}]"#,
+            )
+            .create();
+
+        let gitlab = GitLab {
+            url: server.url(),
+            group: "mygroup".to_string(),
+            use_http: true,
+            private_token: None,
+            recursive: false,
+        };
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 1);
+        let repo = result[0].as_ref().unwrap();
+        assert_eq!(repo.destination, "https://gitlab.com/mygroup/repo.git");
+    }
+
+    #[test]
+    fn test_get_mirror_repos_recursive() {
+        let mut server = Server::new();
+        let _m1 = server
+            .mock("GET", "/api/v4/groups/mygroup/subgroups?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(r#"[{"id": 123}]"#)
+            .create();
+        let _m2 = server
+            .mock("GET", "/api/v4/groups/123/subgroups?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(r#"[]"#)
+            .create();
+        let _m3 = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo1.git","web_url":"https://gitlab.example.com/mygroup/repo1","ssh_url_to_repo":"git@gitlab.com:mygroup/repo1.git","http_url_to_repo":"https://gitlab.com/mygroup/repo1.git"}]"#,
+            )
+            .create();
+        let _m4 = server
+            .mock("GET", "/api/v4/groups/123/projects?per_page=100&page=1")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo2.git","web_url":"https://gitlab.example.com/sub/repo2","ssh_url_to_repo":"git@gitlab.com:sub/repo2.git","http_url_to_repo":"https://gitlab.com/sub/repo2.git"}]"#,
+            )
+            .create();
+
+        let gitlab = create_gitlab(server.url(), true);
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_get_mirror_repos_with_private_token() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("GET", "/api/v4/groups/mygroup/projects?per_page=100&page=1")
+            .match_header("PRIVATE-TOKEN", "secret123")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_header("x-next-page", "")
+            .with_body(
+                r#"[{"description":"origin: https://github.com/test/repo.git","web_url":"https://gitlab.example.com/mygroup/repo","ssh_url_to_repo":"git@gitlab.com:mygroup/repo.git","http_url_to_repo":"https://gitlab.com/mygroup/repo.git"}]"#,
+            )
+            .create();
+
+        let gitlab = GitLab {
+            url: server.url(),
+            group: "mygroup".to_string(),
+            use_http: false,
+            private_token: Some("secret123".to_string()),
+            recursive: false,
+        };
+        let result = gitlab.get_mirror_repos().unwrap();
+        assert_eq!(result.len(), 1);
+    }
+}

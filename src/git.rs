@@ -252,3 +252,172 @@ impl GitWrapper for Git {
         self.run_cmd(push_cmd)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn create_bare_repo() -> TempDir {
+        let dir = TempDir::new().unwrap();
+        Command::new("git")
+            .args(["init", "--bare"])
+            .current_dir(&dir)
+            .output()
+            .expect("git init --bare failed");
+        dir
+    }
+
+    fn create_repo_with_commit() -> TempDir {
+        let dir = TempDir::new().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(&dir)
+            .output()
+            .expect("git init failed");
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(&dir)
+            .output()
+            .expect("git config failed");
+        Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&dir)
+            .output()
+            .expect("git config failed");
+        std::fs::write(dir.path().join("README.md"), "# test\n").unwrap();
+        Command::new("git")
+            .args(["add", "README.md"])
+            .current_dir(&dir)
+            .output()
+            .expect("git add failed");
+        Command::new("git")
+            .args(["commit", "-m", "initial"])
+            .current_dir(&dir)
+            .output()
+            .expect("git commit failed");
+        dir
+    }
+
+    #[test]
+    fn test_git_new() {
+        let git = Git::new("git".to_string(), false, None);
+        assert!(!git.lfs_enabled);
+        assert_eq!(git.executable, "git");
+    }
+
+    #[test]
+    fn test_git_version() {
+        let git = Git::new("git".to_string(), false, None);
+        assert!(git.git_version().is_ok());
+    }
+
+    #[test]
+    fn test_git_version_invalid_executable() {
+        let git = Git::new("not-a-real-git-binary".to_string(), false, None);
+        assert!(git.git_version().is_err());
+    }
+
+    #[test]
+    fn test_git_clone_mirror_success() {
+        let origin = create_bare_repo();
+        let mirror_dir = TempDir::new().unwrap();
+        let mirror_path = mirror_dir.path().join("mirror.git");
+        let git = Git::new("git".to_string(), false, None);
+        let result = git.git_clone_mirror(
+            origin.path().to_str().unwrap(),
+            &mirror_path,
+            false,
+        );
+        assert!(result.is_ok(), "clone failed: {:?}", result);
+        assert!(mirror_path.is_dir());
+    }
+
+    #[test]
+    fn test_git_clone_mirror_existing_file() {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("not-a-dir");
+        std::fs::write(&file_path, "x").unwrap();
+        let git = Git::new("git".to_string(), false, None);
+        let result = git.git_clone_mirror("/dev/null", &file_path, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_git_update_mirror_success() {
+        let origin = create_bare_repo();
+        let mirror_dir = TempDir::new().unwrap();
+        let mirror_path = mirror_dir.path().join("mirror.git");
+        let git = Git::new("git".to_string(), false, None);
+        git.git_clone_mirror(origin.path().to_str().unwrap(), &mirror_path, false)
+            .unwrap();
+
+        let new_origin = create_bare_repo();
+        let result = git.git_update_mirror(
+            new_origin.path().to_str().unwrap(),
+            &mirror_path,
+            false,
+        );
+        assert!(result.is_ok(), "update failed: {:?}", result);
+    }
+
+    #[test]
+    fn test_git_push_mirror_with_refspec() {
+        let origin = create_repo_with_commit();
+        // Determine default branch name (master or main)
+        let output = std::process::Command::new("git")
+            .args(["-C", origin.path().to_str().unwrap(), "branch", "--show-current"])
+            .output()
+            .unwrap();
+        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let bare_dest = create_bare_repo();
+        let git = Git::new("git".to_string(), false, None);
+        let result = git.git_push_mirror(
+            bare_dest.path().to_str().unwrap(),
+            origin.path(),
+            &Some(vec![format!("refs/heads/{branch}:refs/heads/{branch}")]),
+            false,
+        );
+        assert!(result.is_ok(), "push failed: {:?}", result);
+    }
+
+    #[test]
+    fn test_git_push_mirror_mirror_mode() {
+        let origin = create_repo_with_commit();
+        let bare_dest = create_bare_repo();
+        let git = Git::new("git".to_string(), false, None);
+        let result = git.git_push_mirror(
+            bare_dest.path().to_str().unwrap(),
+            origin.path(),
+            &None,
+            false,
+        );
+        assert!(result.is_ok(), "mirror push failed: {:?}", result);
+    }
+
+    #[test]
+    fn test_git_clone_and_update_roundtrip() {
+        let origin = create_repo_with_commit();
+        let bare_remote = create_bare_repo();
+        let git = Git::new("git".to_string(), false, None);
+
+        // Push origin to bare remote first so there's something to fetch
+        git.git_push_mirror(
+            bare_remote.path().to_str().unwrap(),
+            origin.path(),
+            &None,
+            false,
+        ).unwrap();
+
+        // Clone mirror from bare remote
+        let mirror_dir = TempDir::new().unwrap();
+        let mirror_path = mirror_dir.path().join("mirror.git");
+        git.git_clone_mirror(bare_remote.path().to_str().unwrap(), &mirror_path, false)
+            .unwrap();
+
+        // Update should succeed since origin URL is valid
+        let result = git.git_update_mirror(bare_remote.path().to_str().unwrap(), &mirror_path, false);
+        assert!(result.is_ok(), "update failed: {:?}", result);
+    }
+}
