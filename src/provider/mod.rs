@@ -14,7 +14,7 @@ pub struct Mirror {
     pub lfs: bool,
 }
 
-/// An error occuring during mirror creation
+/// An error occurring during mirror creation
 #[derive(Debug, Error)]
 pub enum MirrorError {
     #[error("data store disconnected")]

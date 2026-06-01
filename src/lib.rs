@@ -27,7 +27,7 @@ use slug::slugify;
 #[macro_use]
 extern crate serde_derive;
 
-// Used to allow multiple paralell sync tasks
+// Used to allow multiple parallel sync tasks
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 // Time handling
@@ -313,7 +313,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         ))
     })?;
 
-    trace!("Aquired lockfile: {:?}", &lockfile);
+    trace!("Acquired lockfile: {:?}", &lockfile);
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
@@ -353,8 +353,8 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
 fn write_metrics(f: &Path) {
     let mut file = File::create(f).unwrap();
     let encoder = TextEncoder::new();
-    let metric_familys = prometheus::gather();
-    encoder.encode(&metric_familys, &mut file).unwrap();
+    let metric_families = prometheus::gather();
+    encoder.encode(&metric_families, &mut file).unwrap();
 }
 
 fn write_junit_report(f: &Path, ts: TestSuite) {

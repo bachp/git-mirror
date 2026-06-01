@@ -13,7 +13,7 @@ use thiserror::Error;
 use log::debug;
 use wait_timeout::ChildExt;
 
-/// An error occuring during git command execution
+/// An error occurring during git command execution
 #[derive(Debug, Error)]
 pub enum GitError {
     #[error("Command {cmd_str} failed with system error: {err}")]

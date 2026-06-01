@@ -179,7 +179,7 @@ fn main() {
             info!("All done");
         }
         Err(e) => {
-            error!("Error occured: {e}");
+            error!("Error occurred: {e}");
             exit(e.into());
         }
     };
