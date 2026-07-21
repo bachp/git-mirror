@@ -93,7 +93,7 @@ pub fn mirror_repo(
         fs::remove_dir_all(&origin_dir).map_err(|e| {
             GitMirrorError::GenericError(format!(
                 "Unable to delete working repository: {} because of error: {}",
-                &origin_dir.to_string_lossy(),
+                origin_dir.to_string_lossy(),
                 e
             ))
         })?;
@@ -293,7 +293,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
     fs::create_dir_all(&opts.mirror_dir).map_err(|e| {
         GitMirrorError::GenericError(format!(
             "Unable to create mirror dir: {:?} ({})",
-            &opts.mirror_dir, e
+            opts.mirror_dir, e
         ))
     })?;
 
@@ -302,18 +302,18 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
     let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
         GitMirrorError::GenericError(format!(
             "Unable to open lockfile: {:?} ({})",
-            &lockfile_path, e
+            lockfile_path, e
         ))
     })?;
 
     lockfile.try_lock_exclusive().map_err(|e| {
         GitMirrorError::GenericError(format!(
             "Another instance is already running against the same mirror directory: {:?} ({})",
-            &opts.mirror_dir, e
+            opts.mirror_dir, e
         ))
     })?;
 
-    trace!("Acquired lockfile: {:?}", &lockfile);
+    trace!("Acquired lockfile: {:?}", lockfile);
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
