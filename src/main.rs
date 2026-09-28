@@ -76,6 +76,10 @@ struct Opt {
     #[arg(long)]
     dry_run: bool,
 
+    /// Skip locking the mirror directory (allows concurrent instances)
+    #[arg(long)]
+    no_lock: bool,
+
     /// Number of concurrent mirror jobs
     #[arg(short = 'c', long, default_value = "1")]
     worker_count: usize,
@@ -128,6 +132,7 @@ impl From<Opt> for MirrorOptions {
         MirrorOptions {
             mirror_dir: opt.mirror_dir,
             dry_run: opt.dry_run,
+            no_lock: opt.no_lock,
             worker_count: opt.worker_count,
             metrics_file: opt.metric_file,
             junit_file: opt.junit_report,

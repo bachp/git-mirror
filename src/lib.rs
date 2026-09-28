@@ -263,6 +263,7 @@ fn run_sync_task(v: &[MirrorResult], label: &str, opts: &MirrorOptions) -> TestS
 pub struct MirrorOptions {
     pub mirror_dir: PathBuf,
     pub dry_run: bool,
+    pub no_lock: bool,
     pub metrics_file: Option<PathBuf>,
     pub junit_file: Option<PathBuf>,
     pub worker_count: usize,
@@ -297,23 +298,28 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         ))
     })?;
 
-    // Check that only one instance is running against a mirror directory
-    let lockfile_path = opts.mirror_dir.join("git-mirror.lock");
-    let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
-        GitMirrorError::GenericError(format!(
-            "Unable to open lockfile: {:?} ({})",
-            lockfile_path, e
-        ))
-    })?;
+    // Keep the file alive until the sync finishes so the lock is held throughout.
+    let _lockfile = if opts.no_lock {
+        None
+    } else {
+        let lockfile_path = opts.mirror_dir.join("git-mirror.lock");
+        let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
+            GitMirrorError::GenericError(format!(
+                "Unable to open lockfile: {:?} ({})",
+                lockfile_path, e
+            ))
+        })?;
 
-    lockfile.try_lock_exclusive().map_err(|e| {
-        GitMirrorError::GenericError(format!(
-            "Another instance is already running against the same mirror directory: {:?} ({})",
-            opts.mirror_dir, e
-        ))
-    })?;
+        lockfile.try_lock_exclusive().map_err(|e| {
+            GitMirrorError::GenericError(format!(
+                "Another instance is already running against the same mirror directory: {:?} ({})",
+                opts.mirror_dir, e
+            ))
+        })?;
 
-    trace!("Acquired lockfile: {:?}", lockfile);
+        trace!("Acquired lockfile: {:?}", lockfile);
+        Some(lockfile)
+    };
 
     // Get the list of repos to sync from gitlabsss
     let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
