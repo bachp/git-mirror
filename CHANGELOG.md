@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.17] - 2026-10-01
+
 ### Added
 
 - Add a new `git_mirror_timeout` gauge metric to track how many projects run into a timeout.
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - Switch from native-tls to rustls with `rustls-platform-verifier` for platform certificate integration.
+- Update dependencies.
 
 ## [0.14.16] - 2025-10-20
 
