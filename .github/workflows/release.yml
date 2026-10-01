@@ -19,6 +19,8 @@ env:
 jobs:
   build:
     name: Build release
+    permissions:
+      contents: write
 
     runs-on: ${{ matrix.os }}
     strategy:
