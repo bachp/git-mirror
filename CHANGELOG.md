@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - Add a new `git_mirror_timeout` gauge metric to track how many projects run into a timeout.
+- Add `--no-lock` to skip locking the mirror directory.
 
 ### Changed
 

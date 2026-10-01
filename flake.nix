@@ -43,6 +43,11 @@
         cargoLock = {
           lockFile = ./Cargo.lock;
         };
+
+        # The CLI tests initialize reqwest, which needs a CA bundle even for an invalid URL.
+        preCheck = ''
+          export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+        '';
       };
     };
 }

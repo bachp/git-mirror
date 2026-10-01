@@ -32,6 +32,16 @@ git-mirror -g mirror-test -c 8
 
 This will execute at most 8 sync jobs in parallel
 
+### Skipping the mirror directory lock
+
+By default, `git-mirror` creates and locks `git-mirror.lock` in the mirror directory to prevent concurrent runs against the same directory. Use `--no-lock` to skip creating or acquiring this lock:
+
+```sh
+git-mirror -g mirror-test --no-lock
+```
+
+Only use this when concurrent access to the mirror directory is safe for your setup.
+
 ### Setting a timeout for Git operations
 
 `git-mirror` allows to set a timeout for underlying `git` invocations. This can be controlled via the `--git-timeout <timeout_seconds>` flag.
