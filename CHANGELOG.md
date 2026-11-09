@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Drain Git command output while enforcing timeouts to avoid deadlocks on large output.
+- Terminate timed-out Git process groups and reap the command process.
+
 ## [0.14.17] - 2026-10-01
 
 ### Added

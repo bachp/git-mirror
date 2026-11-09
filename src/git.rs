@@ -4,10 +4,13 @@
  * SPDX-License-Identifier:     MIT
  */
 
-use std::io;
+use command_group::CommandGroup;
+use std::io::{self, Read};
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
-use std::time::Duration;
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::thread;
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 use log::debug;
@@ -138,16 +141,66 @@ impl Git {
         mut cmd: Command,
         timeout: Duration,
     ) -> Result<Output, CommandExecutionError> {
-        let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+        let start = Instant::now();
+        let mut child = cmd
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .group_spawn()?;
+        let stdout = child.inner().stdout.take().unwrap();
+        let stderr = child.inner().stderr.take().unwrap();
+        drop(child.inner().stdin.take());
 
-        match child.wait_timeout(timeout)? {
-            Some(_) => Ok(child.wait_with_output()?),
-            None => {
-                child.kill()?;
-                Err(CommandExecutionError::TimeoutReachedError(timeout))
+        thread::scope(|scope| {
+            let (stdout_tx, stdout_rx) = mpsc::channel();
+            let (stderr_tx, stderr_rx) = mpsc::channel();
+            scope.spawn(move || {
+                let _ = stdout_tx.send(read_output(stdout));
+            });
+            scope.spawn(move || {
+                let _ = stderr_tx.send(read_output(stderr));
+            });
+
+            let remaining = || timeout.saturating_sub(start.elapsed());
+            let collect = |receiver: Receiver<io::Result<Vec<u8>>>| match receiver
+                .recv_timeout(remaining())
+            {
+                Ok(output) => output.map_err(CommandExecutionError::from),
+                Err(RecvTimeoutError::Timeout) => {
+                    Err(CommandExecutionError::TimeoutReachedError(timeout))
+                }
+                Err(error) => Err(io::Error::other(error).into()),
+            };
+
+            let result = (|| {
+                let stdout = collect(stdout_rx)?;
+                let stderr = collect(stderr_rx)?;
+                let status = child
+                    .inner()
+                    .wait_timeout(remaining())?
+                    .ok_or(CommandExecutionError::TimeoutReachedError(timeout))?;
+                Ok(Output {
+                    status,
+                    stdout,
+                    stderr,
+                })
+            })();
+
+            if result.is_err() {
+                if let Err(error) = child.kill() {
+                    debug!("Unable to terminate Git process group: {error}");
+                }
+                child.wait()?;
             }
-        }
+
+            result
+        })
     }
+}
+
+fn read_output(mut reader: impl Read) -> io::Result<Vec<u8>> {
+    let mut output = Vec::new();
+    reader.read_to_end(&mut output)?;
+    Ok(output)
 }
 
 impl GitWrapper for Git {
@@ -250,5 +303,137 @@ impl GitWrapper for Git {
             push_cmd.args(["--mirror", dest]);
         }
         self.run_cmd(push_cmd)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::time::Instant;
+
+    const OUTPUT_SIZE: usize = 2 * 1024 * 1024;
+
+    fn fixture(mode: &str) -> Command {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--ignored",
+                "--exact",
+                "git::tests::command_fixture",
+                "--nocapture",
+            ])
+            .env("GIT_MIRROR_TEST_COMMAND", mode);
+        command
+    }
+
+    #[test]
+    #[ignore = "subprocess fixture"]
+    fn command_fixture() {
+        let mode = std::env::var("GIT_MIRROR_TEST_COMMAND").unwrap();
+        match mode.as_str() {
+            "stdout" | "stderr" | "both" => {
+                let mut stdout = io::stdout().lock();
+                let mut stderr = io::stderr().lock();
+                let chunk = [0; 8192];
+                for _ in 0..OUTPUT_SIZE / chunk.len() {
+                    if mode != "stderr" {
+                        stdout.write_all(&chunk).unwrap();
+                    }
+                    if mode != "stdout" {
+                        stderr.write_all(&chunk).unwrap();
+                    }
+                }
+            }
+            "failure" => {
+                eprintln!("fixture failed");
+                std::process::exit(7);
+            }
+            "sleep" => std::thread::sleep(Duration::from_secs(30)),
+            "descendant" => {
+                fixture("sleep").spawn().unwrap().wait().unwrap();
+            }
+            "orphan" => {
+                #[allow(
+                    clippy::zombie_processes,
+                    reason = "The fixture must exit while its child still holds the output pipes"
+                )]
+                let _child = fixture("sleep").spawn().unwrap();
+            }
+            _ => panic!("Unknown fixture mode: {mode}"),
+        }
+    }
+
+    fn assert_large_output(mode: &str) {
+        let git = Git::new("git".into(), false, None);
+        let output = git
+            .run_cmd_with_timeout(fixture(mode), Duration::from_secs(5))
+            .unwrap();
+
+        assert!(output.status.success());
+        for (stream, expected) in [
+            (&output.stdout, mode != "stderr"),
+            (&output.stderr, mode != "stdout"),
+        ] {
+            assert_eq!(
+                stream.iter().filter(|&&byte| byte == 0).count(),
+                if expected { OUTPUT_SIZE } else { 0 }
+            );
+        }
+    }
+
+    #[test]
+    fn captures_large_stdout_with_timeout() {
+        assert_large_output("stdout");
+    }
+
+    #[test]
+    fn captures_large_stderr_with_timeout() {
+        assert_large_output("stderr");
+    }
+
+    #[test]
+    fn captures_both_large_streams_with_timeout() {
+        assert_large_output("both");
+    }
+
+    #[test]
+    fn preserves_exit_code_and_stderr_with_timeout() {
+        let git = Git::new("git".into(), false, Some(Duration::from_secs(5)));
+        let error = git.run_cmd(fixture("failure")).unwrap_err();
+
+        assert!(matches!(
+            *error,
+            GitError::GitCommandError { code: 7, ref stderr, .. }
+                if stderr.contains("fixture failed")
+        ));
+    }
+
+    fn assert_timeout(mode: &str) {
+        let timeout = Duration::from_millis(500);
+        let git = Git::new("git".into(), false, Some(timeout));
+        let start = Instant::now();
+        let error = git.run_cmd(fixture(mode)).unwrap_err();
+
+        assert!(matches!(
+            *error,
+            GitError::GitCommandTimeout { timeout: actual, .. } if actual == timeout
+        ));
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn terminates_command_on_timeout() {
+        assert_timeout("sleep");
+    }
+
+    #[test]
+    fn terminates_descendants_on_timeout() {
+        assert_timeout("descendant");
+    }
+
+    #[test]
+    fn times_out_when_exited_command_leaves_output_pipes_open() {
+        assert_timeout("orphan");
     }
 }
