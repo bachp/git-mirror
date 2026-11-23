@@ -5,6 +5,8 @@
  */
 
 use thiserror::Error;
+
+use crate::Shard;
 /// A representation of a mirror job from origin to destination
 #[derive(Debug)]
 pub struct Mirror {
@@ -44,6 +46,17 @@ struct Desc {
 pub trait Provider {
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String>;
     fn get_label(&self) -> String;
+
+    /// Discover mirror jobs, optionally restricting them to a shard.
+    fn get_mirror_repos_for_shard(
+        &self,
+        shard: Option<Shard>,
+    ) -> Result<Vec<MirrorResult>, String> {
+        if shard.is_some() {
+            return Err("Provider does not support sharding".to_owned());
+        }
+        self.get_mirror_repos()
+    }
 }
 
 mod gitlab;

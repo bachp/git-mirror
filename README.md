@@ -32,6 +32,29 @@ git-mirror -g mirror-test -c 8
 
 This will execute at most 8 sync jobs in parallel
 
+### Sharding across multiple runs
+
+Use `--shard INDEX/TOTAL` to split mirroring across separate processes or machines.
+For example, run these as two jobs in a CI matrix or another orchestrator:
+
+``` sh
+git-mirror -g mirror-test --shard 1/2 --mirror-dir ./cache/shard-1-of-2
+git-mirror -g mirror-test --shard 2/2 --mirror-dir ./cache/shard-2-of-2
+```
+
+Each job discovers repositories as usual but processes only the projects assigned to its shard.
+Assignments are based on project IDs, so discovery order and adding or removing other projects
+do not change a project's shard as long as `TOTAL` stays the same. Shards can be uneven or empty.
+`-c` still controls concurrency within each job.
+
+`--shard` does not change `--mirror-dir`. If jobs share a filesystem, give each shard its own
+mirror directory. Isolated jobs can use the same path on separate volumes. Persist each shard's
+directory between runs to reuse its Git and LFS cache.
+
+Use the same shard count across jobs in a run. If jobs share a filesystem, use separate
+`--metric-file` and `--junit-report` paths when writing reports. Sharded metrics include the shard
+in the `mirror` label.
+
 ### Skipping the mirror directory lock
 
 By default, `git-mirror` creates and locks `git-mirror.lock` in the mirror directory to prevent concurrent runs against the same directory. Use `--no-lock` to skip creating or acquiring this lock:

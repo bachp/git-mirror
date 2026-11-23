@@ -7,6 +7,9 @@
 pub mod error;
 mod git;
 pub mod provider;
+mod shard;
+
+pub use shard::Shard;
 
 use std::fs;
 use std::fs::File;
@@ -276,6 +279,15 @@ pub struct MirrorOptions {
 }
 
 pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()> {
+    do_mirror_with_shard(provider, opts, None)
+}
+
+/// Mirror only the given shard, without changing the configured mirror directory.
+pub fn do_mirror_with_shard(
+    provider: Box<dyn Provider>,
+    opts: &MirrorOptions,
+    shard: Option<Shard>,
+) -> Result<()> {
     let start_time = register_gauge_vec!(
         "git_mirror_start_time",
         "Start time of the sync as unix timestamp",
@@ -289,20 +301,17 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
     )
     .unwrap();
 
-    // Make sure the mirror directory exists
-    trace!("Create mirror directory at {:?}", opts.mirror_dir);
-    fs::create_dir_all(&opts.mirror_dir).map_err(|e| {
-        GitMirrorError::GenericError(format!(
-            "Unable to create mirror dir: {:?} ({})",
-            opts.mirror_dir, e
-        ))
+    let cache_dir = &opts.mirror_dir;
+    trace!("Create mirror directory at {cache_dir:?}");
+    fs::create_dir_all(cache_dir).map_err(|e| {
+        GitMirrorError::GenericError(format!("Unable to create mirror dir: {cache_dir:?} ({e})"))
     })?;
 
     // Keep the file alive until the sync finishes so the lock is held throughout.
     let _lockfile = if opts.no_lock {
         None
     } else {
-        let lockfile_path = opts.mirror_dir.join("git-mirror.lock");
+        let lockfile_path = cache_dir.join("git-mirror.lock");
         let lockfile = fs::File::create(&lockfile_path).map_err(|e| {
             GitMirrorError::GenericError(format!(
                 "Unable to open lockfile: {:?} ({})",
@@ -312,8 +321,7 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
 
         lockfile.try_lock_exclusive().map_err(|e| {
             GitMirrorError::GenericError(format!(
-                "Another instance is already running against the same mirror directory: {:?} ({})",
-                opts.mirror_dir, e
+                "Another instance is already running against the same mirror directory: {cache_dir:?} ({e})"
             ))
         })?;
 
@@ -321,19 +329,24 @@ pub fn do_mirror(provider: Box<dyn Provider>, opts: &MirrorOptions) -> Result<()
         Some(lockfile)
     };
 
-    // Get the list of repos to sync from gitlabsss
-    let v = provider.get_mirror_repos().map_err(|e| -> GitMirrorError {
-        GitMirrorError::GenericError(format!("Unable to get mirror repos ({e})"))
-    })?;
+    let v = provider
+        .get_mirror_repos_for_shard(shard)
+        .map_err(|e| GitMirrorError::GenericError(format!("Unable to get mirror repos ({e})")))?;
+
+    let mut label = provider.get_label();
+    if let Some(shard) = shard {
+        info!("Shard {shard}: {} projects in {cache_dir:?}", v.len());
+        label = format!("{label} (shard {shard})");
+    }
 
     start_time
-        .with_label_values(&[&provider.get_label()])
+        .with_label_values(&[&label])
         .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
 
-    let ts = run_sync_task(&v, &provider.get_label(), opts);
+    let ts = run_sync_task(&v, &label, opts);
 
     end_time
-        .with_label_values(&[&provider.get_label()])
+        .with_label_values(&[&label])
         .set(OffsetDateTime::now_utc().unix_timestamp() as f64);
 
     match opts.metrics_file {
