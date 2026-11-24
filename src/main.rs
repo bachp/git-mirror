@@ -18,9 +18,8 @@ use clap::{crate_name, crate_version};
 use std::path::PathBuf;
 
 // Load the real functionality
-use git_mirror::MirrorOptions;
-use git_mirror::do_mirror;
 use git_mirror::provider::{GitHub, GitLab, Provider};
+use git_mirror::{MirrorOptions, Shard, do_mirror_with_shard};
 
 use std::process::exit;
 
@@ -63,6 +62,12 @@ struct Opt {
     /// Directory where the local clones are stored
     #[arg(long = "mirror-dir", short = 'm', default_value = "./mirror-dir")]
     mirror_dir: PathBuf,
+
+    /// Run one shard of the repository list (1-based INDEX/TOTAL)
+    ///
+    /// Use a different --mirror-dir for each concurrent shard on a shared filesystem.
+    #[arg(long, value_name = "INDEX/TOTAL")]
+    shard: Option<Shard>,
 
     /// Verbosity level
     #[arg(short, long, action = ArgAction::Count)]
@@ -177,9 +182,10 @@ fn main() {
         }),
     };
 
+    let shard = opt.shard;
     let opts: MirrorOptions = opt.into();
 
-    match do_mirror(provider, &opts) {
+    match do_mirror_with_shard(provider, &opts, shard) {
         Ok(_) => {
             info!("All done");
         }

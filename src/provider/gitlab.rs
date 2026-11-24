@@ -11,6 +11,7 @@ use reqwest::StatusCode;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
 
+use crate::Shard;
 use crate::provider::{Desc, Mirror, MirrorError, MirrorResult, Provider};
 
 #[derive(Debug)]
@@ -25,6 +26,7 @@ pub struct GitLab {
 /// A project from the GitLab API
 #[derive(Deserialize, Debug, Clone)]
 struct Project {
+    id: u64,
     description: String,
     web_url: String,
     ssh_url_to_repo: String,
@@ -144,6 +146,13 @@ impl Provider for GitLab {
     }
 
     fn get_mirror_repos(&self) -> Result<Vec<MirrorResult>, String> {
+        self.get_mirror_repos_for_shard(None)
+    }
+
+    fn get_mirror_repos_for_shard(
+        &self,
+        shard: Option<Shard>,
+    ) -> Result<Vec<MirrorResult>, String> {
         let client = Client::new();
 
         let use_http = self.use_http;
@@ -181,7 +190,10 @@ impl Provider for GitLab {
 
         let mut mirrors: Vec<MirrorResult> = Vec::new();
 
-        for p in projects {
+        for p in projects
+            .into_iter()
+            .filter(|p| shard.is_none_or(|shard| shard.contains(p.id)))
+        {
             match serde_yaml::from_str::<Desc>(&p.description) {
                 Ok(desc) => {
                     if desc.skip {
