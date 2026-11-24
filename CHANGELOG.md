@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.18] - 2026-11-24
+
+### Added
+
+- Add `--shard INDEX/TOTAL` to split repository mirroring across separate runs or machines.
+
+### Changed
+
+- Update dependencies.
+
 ### Fixed
 
 - Drain Git command output while enforcing timeouts to avoid deadlocks on large output.
