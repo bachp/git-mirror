@@ -28,6 +28,7 @@ junit-report = "0.8.3"
 clap = { version = "4.6.1", features = [ "derive", "cargo", "env" ]}
 thiserror = "2.0.18"
 wait-timeout = "0.2.1"
+command-group = "5.0.1"
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
