@@ -30,6 +30,11 @@ jobs:
       - name: Setup rust toolchain
         run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update --override
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Run cargo test
         run: cargo test
 
