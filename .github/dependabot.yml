@@ -6,6 +6,10 @@ updates:
     interval: daily
     time: "04:00"
   open-pull-requests-limit: 10
+  groups:
+    cargo-non-major:
+      patterns: ["*"]
+      update-types: ["minor", "patch"]
   ignore:
   - dependency-name: junit-report
     versions:
@@ -25,3 +29,11 @@ updates:
   - dependency-name: serde_derive
     versions:
     - 1.0.123
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: weekly
+  groups:
+    actions-non-major:
+      patterns: ["*"]
+      update-types: ["minor", "patch"]
